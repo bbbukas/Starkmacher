@@ -39,7 +39,7 @@ export function MeinBedarf() {
               <ZieleListe bedarf={bedarf} ausgeblendet={stand.profil.ausgeblendet} />
               <ArtLegende />
               <p className="quelle">
-                Für jeden Nährstoff gilt die jüngste wissenschaftliche Herleitung von DGE/ÖGE, EFSA, den Nordischen Empfehlungen oder der WHO. Fährst du mit der Maus auf den Buchstaben, steht dort die Quelle. Alle Quellen stehen in den Einstellungen unter „Über Starkmacher“.
+                Soweit du nichts anderes vorgegeben hast („D“), gilt für jeden Nährstoff die jüngste wissenschaftliche Herleitung von DGE/ÖGE, EFSA, den Nordischen Empfehlungen oder der WHO. Fährst du mit der Maus auf den Buchstaben, steht dort die Quelle. Alle Quellen stehen in den Einstellungen unter „Über Starkmacher“.
               </p>
             </>
           )}

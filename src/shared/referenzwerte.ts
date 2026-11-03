@@ -9,11 +9,13 @@
  * NNR) oder der WHO. Übernimmt eine Stelle nur den Wert einer anderen, zählt das
  * Original. Geprüft am 03.11.2026.
  *
+ * Vorgaben von Lukas (04.11.2026) gehen der Regel vor: Eiweiß (bedarf.ts), Fett, Ballaststoffe,
+ * Omega-6 zu Omega-3, EPA und DHA, Leucin je Mahlzeit (ganz unten). Im Programm heißen sie
+ * „deine Vorgabe“, nicht Forschungsstand. Für alle anderen Nährstoffe nannte er keine Ersatzwerte.
+ *
  * Bewusste Ausnahmen von der Regel:
  * - Folat: EFSA 2014 statt DGE 2015, weil der BLS Folat genauso rechnet wie die
  *   EFSA (Folsäure × 1,7). Die Nordischen Empfehlungen 2023 bestätigen den Wert.
- * - Ballaststoffe: DGE 2021 (mindestens 30 g) statt WHO 2023 (mindestens 25 g),
- *   weil die WHO nur die Untergrenze nennt. NNR 2023 empfiehlt 25–35 g.
  *
  * Annahmen, wo die Quelle nach etwas unterscheidet, das Starkmacher nicht abfragt:
  * - Zink: Wert für mittlere Phytatzufuhr (bei viel Vollkorn und Hülsenfrüchten
@@ -102,8 +104,7 @@ export const REFERENZWERTE: readonly ReferenzEintrag[] = [
   },
   { code: 'MO', art: 'schaetzwert', quelle: 'EFSA 2013', ...gleich(65) },
 
-  // Makros und Ballaststoffe
-  { code: 'FIBT', art: 'richtwert', quelle: 'DGE/ÖGE 2021', ...gleich(30) },
+  // Makros
   {
     code: 'WATER',
     art: 'schaetzwert',
@@ -154,9 +155,14 @@ export const HOECHSTWERTE: readonly Hoechstwert[] = [
 export const HINWEISE_OHNE_ZIEL: Readonly<Record<string, string>> = {
   ALC: 'Keine Menge gilt als sicher (DGE 2024). Deshalb gibt es hier kein Ziel.',
   CR: 'Kein Ziel: Es ist nicht belegt, dass der Körper Chrom braucht (EFSA 2014, NNR 2023).',
-  'F20:5CN3': 'EPA und DHA zusammen: etwa 250 mg am Tag (EFSA 2010).',
-  'F22:6CN3': 'EPA und DHA zusammen: etwa 250 mg am Tag (EFSA 2010).',
 };
+
+// Vorgaben von Lukas (04.11.2026). Die Fachstellen sehen es teils anders, das steht jeweils dabei.
+export const FETT_SPANNE = { von: 0.25, bis: 0.35 }; // Anteil an der Energie. Passt zu EFSA (20–35 %) und NNR 2023 (25–40 %).
+export const BALLASTSTOFFE_G = { von: 40, bis: 50 }; // Über den Fachstellen: DGE 2021 mindestens 30 g, NNR 2023 25–35 g, WHO 2023 mindestens 25 g.
+export const OMEGA6_ZU_OMEGA3 = { ideal: 3, hoechst: 5 }; // NNR 2023: Für ein Verhältnis reicht die Beleglage nicht aus.
+export const EPA_DHA_MG = { von: 1000, bis: 2000 }; // EFSA 2010: 250 mg genügen. Kapseln über 1 g am Tag: mehr Vorhofflimmern (Gencer 2021).
+export const LEUCIN_JE_MAHLZEIT_G = 2.5; // Die Vorgabe nennt keine Zahl; üblich sind 2–3 g. Ob es diese Schwelle gibt, ist umstritten (Übersichtsarbeit 2023).
 
 // Grenzen und Anteile an der Energie
 export const SALZ_HOECHST_G = 5; // EFSA 2019 und WHO: 2 g Natrium am Tag, das sind 5 g Salz (DGE 2016 nennt noch 6 g)

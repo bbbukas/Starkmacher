@@ -193,7 +193,7 @@ export function BedarfErgebnis({ bedarf }: { bedarf: Bedarf }) {
         </Teller>
         <div className="makros">
           <MakroZahl klasse="g-aminosaeuren" titel="Eiweiß" gramm={bedarf.eiweissG} text={eigen ? undefined : bedarf.eiweissGrund} />
-          <MakroZahl klasse="g-fettsaeuren" titel="Fett" gramm={bedarf.fettG} text={eigen ? undefined : `${zahlText(bedarf.fettAnteil * 100)} % der Energie`} />
+          <MakroZahl klasse="g-fettsaeuren" titel="Fett" gramm={bedarf.fettG} text={eigen ? undefined : `${zahlText(bedarf.fettAnteil * 100)} % der Energie (25–35 %)`} />
           <MakroZahl klasse="g-kohlenhydrate" titel="Kohlenhydrate" gramm={bedarf.kohlenhydrateG} text={eigen ? undefined : 'der Rest'} />
         </div>
       </div>

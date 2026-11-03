@@ -7,7 +7,9 @@ import type { Aktivitaet, Geschlecht, Gewicht, Profil, Tempo, Ziel, ZielStand } 
 import { neuestesGewicht } from './profil';
 import {
   ALPHA_LINOLENSAEURE_ANTEIL,
+  BALLASTSTOFFE_G,
   EINFACH_UNGESAETTIGT_ANTEIL,
+  FETT_SPANNE,
   GESAETTIGT_HOECHST_ANTEIL,
   HOECHSTWERTE,
   LINOLSAEURE_ANTEIL,
@@ -48,20 +50,15 @@ export const AUFBAU_ANTEIL: Readonly<Record<Tempo, number>> = { sanft: 0.05, mit
 export const UNTERGRENZE_KCAL: Readonly<Record<Geschlecht, number>> = { weiblich: 1200, maennlich: 1500 };
 
 /**
- * Eiweiß beim Abnehmen und Muskelaufbau. DGE-Positionspapier „Proteinzufuhr im Sport“ (2020):
- * 1,2–2,0 g je kg; Morton 2018: darüber kaum noch Zuwachs ab etwa 1,6 g (Spanne 1,0–2,2 g);
- * bei Übergewicht unter Kaloriendefizit über 1,3 g je kg günstig, unter 1,0 g mehr Muskelverlust (Clin Nutr ESPEN 2024).
+ * Eiweiß nach Lukas' Vorgabe (04.11.2026): 1,2–1,6 g je kg, bei Sport oder Kaloriendefizit 1,6–2,0 g je kg.
+ * Geplant wird mit der Mitte der Spanne. Die Forschung stützt das weitgehend: DGE-Positionspapier „Proteinzufuhr
+ * im Sport“ (2020) 1,2–2,0 g je kg; Morton 2018 Knick bei etwa 1,6 g (Spanne 1,0–2,2 g); Nordische Empfehlungen 2023
+ * ab 65 Jahren 1,2–1,5 g je kg.
  */
-export const EIWEISS_FUER_ZIELE_G_JE_KG = 1.6;
-/** Nordische Empfehlungen 2023: Planungswert 15 % der Energie, mindestens die 0,83 g je kg, die fast alle Gesunden sicher versorgen. */
-const EIWEISS_ANTEIL = 0.15;
-const EIWEISS_MINDEST_G_JE_KG = 0.83;
-/** Nordische Empfehlungen 2023, ab 65 Jahren: 18 % der Energie, 1,2–1,5 g je kg, um die körperliche Leistung zu erhalten. */
-const EIWEISS_AB_65_ANTEIL = 0.18;
-const EIWEISS_AB_65_G_JE_KG = { von: 1.2, bis: 1.5 };
+export const EIWEISS_G_JE_KG = { von: 1.2, bis: 1.6 };
+export const EIWEISS_HOCH_G_JE_KG = { von: 1.6, bis: 2.0 };
 const FETT_ANTEIL = 0.3;
 const FETT_ANTEIL_HOHE_AKTIVITAET = 0.35;
-const BALLASTSTOFFE_G = 30;
 
 const KCAL_JE_G_EIWEISS = 4;
 const KCAL_JE_G_FETT = 9;
@@ -108,17 +105,18 @@ export function rechengewichtFuerEiweiss(gewichtKg: number, groesseCm: number): 
   return Math.min(gewichtKg, 25 * meter * meter);
 }
 
-/** Eiweißziel in Gramm und in Worten. Grundlage: siehe oben. */
-export function eiweissZiel(ziel: Ziel, alter: number, kcal: number, rechengewichtKg: number): { gramm: number; grund: string } {
-  if (ziel === 'abnehmen' || ziel === 'aufbauen') {
-    return { gramm: Math.round(rechengewichtKg * EIWEISS_FUER_ZIELE_G_JE_KG), grund: '1,6 g je kg' };
-  }
-  if (alter >= 65) {
-    const anteil = (kcal * EIWEISS_AB_65_ANTEIL) / KCAL_JE_G_EIWEISS;
-    const gramm = Math.min(Math.max(anteil, rechengewichtKg * EIWEISS_AB_65_G_JE_KG.von), rechengewichtKg * EIWEISS_AB_65_G_JE_KG.bis);
-    return { gramm: Math.round(gramm), grund: '18 % der Energie, 1,2–1,5 g je kg' };
-  }
-  return { gramm: Math.round(Math.max((kcal * EIWEISS_ANTEIL) / KCAL_JE_G_EIWEISS, rechengewichtKg * EIWEISS_MINDEST_G_JE_KG)), grund: '15 % der Energie' };
+const brauchtVielEiweiss = (ziel: Ziel, sport: boolean) => ziel === 'abnehmen' || ziel === 'aufbauen' || sport;
+
+/** Eiweißziel: die Spanne in Gramm, die Mitte zum Planen und in Worten, wie es zustande kommt. */
+export function eiweissZiel(ziel: Ziel, sport: boolean, rechengewichtKg: number): { von: number; bis: number; gramm: number; grund: string } {
+  const spanne = brauchtVielEiweiss(ziel, sport) ? EIWEISS_HOCH_G_JE_KG : EIWEISS_G_JE_KG;
+  const mitte = (spanne.von + spanne.bis) / 2;
+  return {
+    von: Math.round(rechengewichtKg * spanne.von),
+    bis: Math.round(rechengewichtKg * spanne.bis),
+    gramm: Math.round(rechengewichtKg * mitte),
+    grund: `${mitte.toLocaleString('de-DE')} g je kg (${spanne.von.toLocaleString('de-DE')}–${spanne.bis.toLocaleString('de-DE', { minimumFractionDigits: 1 })} g)`,
+  };
 }
 
 export interface BedarfEingabe {
@@ -181,7 +179,7 @@ const wertFuer = (wert: number | readonly [number, number, number, number], grup
 
 /** Die Kohlenhydrate füllen auf, was nach Eiweiß, Fett und Ballaststoffen noch frei ist. */
 function kohlenhydrateAlsRest(kcal: number, eiweissG: number, fettG: number): number {
-  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_G * KCAL_JE_G_BALLASTSTOFFE;
+  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_G.von * KCAL_JE_G_BALLASTSTOFFE;
   return Math.max(0, Math.round(rest / KCAL_JE_G_KOHLENHYDRATE));
 }
 
@@ -199,7 +197,7 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
   const kcal = Math.max(wunsch, grenze);
 
   const rechengewicht = rechengewichtFuerEiweiss(e.gewichtKg, e.groesseCm);
-  const eiweiss = eiweissZiel(e.ziel, e.alter, kcal, rechengewicht);
+  const eiweiss = eiweissZiel(e.ziel, e.sport, rechengewicht);
   const fettAnteil = pal > 1.7 ? FETT_ANTEIL_HOHE_AKTIVITAET : FETT_ANTEIL;
   const eiweissG = eigen && e.eigeneEiweissG != null ? e.eigeneEiweissG : eiweiss.gramm;
   const fettG = eigen && e.eigeneFettG != null ? e.eigeneFettG : Math.round((kcal * fettAnteil) / KCAL_JE_G_FETT);
@@ -236,8 +234,27 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
 
   const eigenOder = (quelle: string) => (eigen ? 'dein eigener Wert' : quelle);
   ziele.ENERCC = { code: 'ENERCC', art: eigenerOderRicht, von: kcal, quelle: eigenOder('Grundumsatz nach DGE × Aktivität') };
-  ziele.PROT625 = { code: 'PROT625', art: eigenerOderRicht, von: eiweissG, quelle: eigenOder(e.ziel === 'halten' ? 'NNR 2023' : 'DGE 2020, Morton 2018, Clin Nutr ESPEN 2024') };
-  ziele.FAT = { code: 'FAT', art: eigenerOderRicht, von: fettG, quelle: eigenOder('NNR 2023, EFSA 2010') };
+  ziele.PROT625 = {
+    code: 'PROT625',
+    art: 'eigener-wert',
+    ...(eigen ? { von: eiweissG } : { von: eiweiss.von, bis: eiweiss.bis }),
+    quelle: 'deine Vorgabe',
+    ...(!eigen && brauchtVielEiweiss(e.ziel, e.sport) ? { hinweis: 'Ab 2 g je kg über lange Zeit ist laut DGE ein Schaden an den Nieren nicht auszuschließen.' } : {}),
+  };
+  ziele.FAT = {
+    code: 'FAT',
+    art: 'eigener-wert',
+    ...(eigen ? { von: fettG } : { von: kcalAlsG(FETT_SPANNE.von, KCAL_JE_G_FETT), bis: kcalAlsG(FETT_SPANNE.bis, KCAL_JE_G_FETT) }),
+    quelle: 'deine Vorgabe',
+  };
+  ziele.FIBT = {
+    code: 'FIBT',
+    art: 'eigener-wert',
+    von: BALLASTSTOFFE_G.von,
+    bis: BALLASTSTOFFE_G.bis,
+    quelle: 'deine Vorgabe',
+    hinweis: 'Gut sind fermentierbare Quellen wie Hafer und Hülsenfrüchte. Langsam steigern und genug trinken (DGE).',
+  };
   ziele.CHO = {
     code: 'CHO',
     art: eigenerOderRicht,

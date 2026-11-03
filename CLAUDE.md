@@ -43,7 +43,7 @@ Oberfläche ──window.starkmacher──▶ preload ──IPC──▶ main/ip
 ### Entscheidungen, die man im Code wiederfindet
 
 - **Regel (Lukas, 03.11.2026): der heutige Stand der Wissenschaft, in jeder Information.** Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche Herleitung von DGE/ÖGE, EFSA, Nordischen Empfehlungen (NNR 2023) oder WHO, mit Quelle und Stand in `referenzwerte.ts`; übernimmt eine Stelle nur den Wert einer anderen, zählt das Original. Zuletzt geprüft am 03.11.2026. Neue Werte immer gegen diese Regel prüfen.
-- Eiweiß beim Halten: 15 % der Energie, mindestens 0,83 g/kg; ab 65 Jahren 18 % der Energie, 1,2–1,5 g/kg (NNR 2023). Beim Abnehmen und Muskelaufbau 1,6 g/kg. Gerechnet mit dem echten Gewicht, höchstens mit dem bei BMI 25.
+- **Vorgaben von Lukas (04.11.2026) gehen der Regel vor** und heißen im Programm „deine Vorgabe“ (Art „D“), nie Forschungsstand: Eiweiß 1,2–1,6 g/kg, bei Sport oder Kaloriendefizit 1,6–2,0 g/kg (geplant mit der Mitte; gerechnet mit dem echten Gewicht, höchstens mit dem bei BMI 25), Fett 25–35 %, Ballaststoffe 40–50 g, Omega-6 zu Omega-3 höchstens 5 : 1, EPA und DHA 1.000–2.000 mg, Leucin etwa 2,5 g je Mahlzeit. Die letzten drei wertet das Tagebuch ab Phase 3 aus. Blutwerte sind nicht eingebaut (Entscheidung offen).
 - Muskelaufbau: +5 % oder +15 % auf den Verbrauch (Helms 2023). Abnehmen: −275 oder −550 kcal.
 - Zucker gesamt höchstens 10 % der Energie (Lukas: frei oder aus Obst ist einerlei). Strenger als WHO und NNR.
 - Vitamin D, Fluorid, Chlorid und Wasser haben `keineLuecke`: angezeigt, aber nie als Lücke gemeldet. Chrom hat kein Ziel (EFSA 2014, NNR 2023).

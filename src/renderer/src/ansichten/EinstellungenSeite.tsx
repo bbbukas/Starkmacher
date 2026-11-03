@@ -183,7 +183,7 @@ export function EinstellungenSeite() {
             <b>Lebensmittel:</b> Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. DOI 10.25826/Data20251217-134202-0. Lizenz CC BY 4.0.
           </li>
           <li>
-            <b>Regel für alle Zielwerte:</b> Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO. Geprüft am 03.11.2026. Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen.
+            <b>Regel für alle Zielwerte:</b> Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO. Geprüft am 03.11.2026. Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen. Ausnahme: deine eigenen Vorgaben für Eiweiß, Fett, Omega-Fettsäuren, Leucin und Ballaststoffe („D“).
           </li>
           {QUELLEN.map((q) => (
             <li key={q.kurz}>
@@ -194,7 +194,7 @@ export function EinstellungenSeite() {
             <b>Grundumsatz und Aktivität:</b> Deutsche Gesellschaft für Ernährung, Fragen und Antworten zur Energiezufuhr (2015). Müller-Formel.
           </li>
           <li>
-            <b>Eiweiß:</b> Nordic Nutrition Recommendations 2023. Beim Abnehmen und Muskelaufbau: König D et al., Proteinzufuhr im Sport, Ernährungs Umschau 2020; Morton RW et al., Br J Sports Med 2018; Tagawa R et al., Nutr Rev 2021; Enhanced protein intake in adults with overweight/obesity, Clin Nutr ESPEN 2024.
+            <b>Eiweiß:</b> deine Vorgabe. Zum Vergleich: Nordic Nutrition Recommendations 2023; König D et al., Proteinzufuhr im Sport, Ernährungs Umschau 2020; Morton RW et al., Br J Sports Med 2018; Tagawa R et al., Nutr Rev 2021; Enhanced protein intake in adults with overweight/obesity, Clin Nutr ESPEN 2024.
           </li>
           <li>
             <b>Tempo:</b> Hall KD et al., Lancet 2011; Thomas DM et al., Int J Obes 2013; S3-Leitlinie Adipositas 2024; Helms ER et al., Sports Med Open 2023; Slater GJ et al., Front Nutr 2019.

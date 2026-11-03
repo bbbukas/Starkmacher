@@ -112,6 +112,11 @@ test('Mein Bedarf: rechnet mit, sagt Änderungen an, hält die Untergrenze ein',
     await seite.locator('details.g-aminosaeuren summary').click();
     await expect(seite.locator('details.g-aminosaeuren .ziel-zeile', { hasText: 'Lysin' })).toContainText('ohne Ziel');
     await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Chrom' })).toContainText('Es ist nicht belegt');
+    await seite.locator('details.g-ballaststoffe summary').click();
+    await expect(seite.locator('details.g-ballaststoffe .ziel-zeile', { hasText: 'Ballaststoffe gesamt' })).toContainText('40–50 g');
+    await seite.locator('details.g-fettsaeuren summary').click();
+    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'EPA und DHA zusammen' })).toContainText('1.000–2.000 mg');
+    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'Omega-6 zu Omega-3' })).toContainText('höchstens 5 : 1');
     await expect(seite.locator('details.g-vitamine .ziel-zeile', { hasText: 'Vitamin C' }).locator('abbr')).toHaveAttribute('title', 'Empfehlung. Quelle: DGE/ÖGE 2015');
 
     // Eigene Werte unter der Untergrenze werden freundlich angehoben

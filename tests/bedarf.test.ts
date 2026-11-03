@@ -95,30 +95,24 @@ describe('Untergrenze', () => {
 });
 
 describe('Makros', () => {
-  it('Eiweiß beim Halten: 15 % der Energie, nie unter 0,83 g je kg', () => {
-    expect(eiweissZiel('halten', 40, 2318, 70).gramm).toBe(87); // rund 1,2 g je kg
-    expect(eiweissZiel('halten', 40, 2318, 70).grund).toBe('15 % der Energie');
-    expect(eiweissZiel('halten', 40, 1500, 100).gramm).toBe(83); // 15 % wären nur 56 g
-    expect(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG).toBe(87);
+  it('Eiweiß beim Halten ohne Sport: 1,2–1,6 g je kg, geplant mit der Mitte', () => {
+    expect(eiweissZiel('halten', false, 70)).toEqual({ von: 84, bis: 112, gramm: 98, grund: '1,4 g je kg (1,2–1,6 g)' });
+    expect(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG).toBe(98);
+    expect(bedarfBerechnen(person({ gewichtKg: 70 })).ziele.PROT625).toMatchObject({ von: 84, bis: 112, art: 'eigener-wert', quelle: 'deine Vorgabe' });
   });
-  it('mehr Bewegung heißt auch beim Halten mehr Eiweiß', () => {
-    expect(bedarfBerechnen(person({ gewichtKg: 70, sport: true })).eiweissG).toBeGreaterThan(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG);
-  });
-  it('Eiweiß ab 65 Jahren: 18 % der Energie, zwischen 1,2 und 1,5 g je kg', () => {
-    expect(eiweissZiel('halten', 70, 2172, 70).gramm).toBe(98);
-    expect(eiweissZiel('halten', 70, 1500, 70).gramm).toBe(84); // nicht unter 1,2 g je kg
-    expect(eiweissZiel('halten', 70, 3000, 70).gramm).toBe(105); // nicht über 1,5 g je kg
-    expect(eiweissZiel('halten', 64, 2172, 70).gramm).toBe(81); // unter 65 gelten die 15 %
-  });
-  it('Eiweiß: 1,6 g je kg beim Abnehmen und Muskelaufbau, auch ab 65', () => {
-    expect(bedarfBerechnen(person({ gewichtKg: 70, ziel: 'abnehmen' })).eiweissG).toBe(112);
-    expect(bedarfBerechnen(person({ gewichtKg: 70, ziel: 'aufbauen' })).eiweissG).toBe(112);
-    expect(eiweissZiel('abnehmen', 70, 1800, 70)).toEqual({ gramm: 112, grund: '1,6 g je kg' });
+  it('Eiweiß bei Sport oder Kaloriendefizit: 1,6–2,0 g je kg', () => {
+    const hoch = { von: 112, bis: 140, gramm: 126, grund: '1,8 g je kg (1,6–2,0 g)' };
+    expect(eiweissZiel('halten', true, 70)).toEqual(hoch);
+    expect(eiweissZiel('abnehmen', false, 70)).toEqual(hoch);
+    expect(eiweissZiel('aufbauen', false, 70)).toEqual(hoch);
+    expect(bedarfBerechnen(person({ gewichtKg: 70, ziel: 'abnehmen' })).ziele.PROT625?.hinweis).toContain('Nieren');
+    expect(bedarfBerechnen(person({ gewichtKg: 70 })).ziele.PROT625?.hinweis).toBeUndefined();
+    expect(bedarfBerechnen(person({ gewichtKg: 70.4 })).ziele.PROT625?.hinweis).toBeUndefined(); // Rundung ändert daran nichts
   });
   it('Eiweiß: höchstens mit dem Gewicht bei BMI 25, ohne Sprung', () => {
     expect(rechengewichtFuerEiweiss(70, 180)).toBe(70); // BMI 21,6
     expect(rechengewichtFuerEiweiss(100, 180)).toBeCloseTo(81, 5); // BMI 30,9: gedeckelt
-    expect(bedarfBerechnen(person({ gewichtKg: 100, ziel: 'abnehmen' })).eiweissG).toBe(130);
+    expect(bedarfBerechnen(person({ gewichtKg: 100, ziel: 'abnehmen' })).eiweissG).toBe(146);
     // Knapp darüber und darunter gibt es keinen Sprung
     const darueber = bedarfBerechnen(person({ gewichtKg: 81.5, ziel: 'abnehmen' })).eiweissG;
     const darunter = bedarfBerechnen(person({ gewichtKg: 80.5, ziel: 'abnehmen' })).eiweissG;
@@ -133,18 +127,21 @@ describe('Makros', () => {
   });
   it('Kohlenhydrate sind der Rest und nie negativ', () => {
     const b = bedarfBerechnen(person());
-    const summe = b.eiweissG * 4 + b.fettG * 9 + b.kohlenhydrateG * 4 + 30 * 2;
+    const summe = b.eiweissG * 4 + b.fettG * 9 + b.kohlenhydrateG * 4 + 40 * 2;
     expect(Math.abs(summe - b.kcal)).toBeLessThanOrEqual(6);
     const wenig = bedarfBerechnen(person({ ziel: 'eigene', eigeneKcal: 1700, gewichtKg: 300, groesseCm: 250 }));
     expect(wenig.kohlenhydrateG).toBeGreaterThanOrEqual(0);
   });
-  it('Grenzen: gesättigte Fettsäuren und Zucker höchstens 10 %, Salz 5 g, Ballaststoffe mindestens 30 g', () => {
+  it('Grenzen: gesättigte Fettsäuren und Zucker höchstens 10 %, Salz 5 g, Ballaststoffe 40–50 g, Fett 25–35 %', () => {
     const b = bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd' }));
     expect(b.ziele.FASAT?.hoechst).toBeCloseTo((b.kcal * 0.1) / 9, 0);
     expect(b.ziele.SUGAR?.hoechst).toBeCloseTo((b.kcal * 0.1) / 4, 0);
     expect(b.ziele.SUGAR?.von).toBeUndefined();
     expect(b.ziele.NACL?.hoechst).toBe(5);
-    expect(b.ziele.FIBT).toMatchObject({ von: 30, art: 'richtwert' });
+    expect(b.ziele.FIBT).toMatchObject({ von: 40, bis: 50, art: 'eigener-wert', quelle: 'deine Vorgabe' });
+    expect(b.ziele.FAT?.von).toBeCloseTo((b.kcal * 0.25) / 9, 0);
+    expect(b.ziele.FAT?.bis).toBeCloseTo((b.kcal * 0.35) / 9, 0);
+    expect(b.ziele.FAT?.quelle).toBe('deine Vorgabe');
   });
   it('Eigene Werte gelten, wenn sie eingetragen sind', () => {
     const b = bedarfBerechnen(person({ ziel: 'eigene', eigeneKcal: 2000, eigeneEiweissG: 150, eigeneFettG: 60, eigeneKohlenhydrateG: 200 }));
@@ -219,7 +216,8 @@ describe('Mikronährstoffe nach Alter und Geschlecht', () => {
     const z = bedarfBerechnen(person()).ziele;
     expect(z.VITC?.art).toBe('empfehlung');
     expect(z.VITE?.art).toBe('schaetzwert');
-    expect(z.FIBT?.art).toBe('richtwert');
+    expect(z.FAMS?.art).toBe('richtwert');
+    expect(z.FIBT?.art).toBe('eigener-wert');
     expect(z.NACL?.art).toBe('hoechstwert');
     expect(z.CA).toMatchObject({ von: 950, hoechst: 2500, hoechstArt: 'hoechstwert' });
     expect(z.FE).toMatchObject({ von: 11, hoechst: 40, hoechstArt: 'sichere-menge' });
