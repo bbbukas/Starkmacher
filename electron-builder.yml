@@ -1,0 +1,29 @@
+# Baut das Mac-Programm „Starkmacher“.
+#   npm run paket → release/mac-arm64/Starkmacher.app
+#
+# Keine kostenpflichtige Apple-Signatur (Apple Developer Program, 99 €/Jahr).
+# Das Programm wird nur „ad hoc“ signiert (scripts/ad-hoc-signieren.cjs). Auf
+# diesem Mac gebaut, startet es ohne Rückfrage.
+appId: de.lukas.starkmacher
+productName: Starkmacher
+copyright: Lukas
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+asar: true
+mac:
+  category: public.app-category.healthcare-fitness
+  icon: build/icon.png
+  identity: null
+  target:
+    - target: dmg
+      arch: [arm64]
+  extendInfo:
+    CFBundleDevelopmentRegion: de
+    LSApplicationCategoryType: public.app-category.healthcare-fitness
+afterPack: scripts/ad-hoc-signieren.cjs
+dmg:
+  title: Starkmacher

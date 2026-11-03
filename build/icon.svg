@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Starkmacher: die Kraftfrucht. Ein angespannter Arm, reif wie eine Tomate, mit Blatt. Mac-Symbolraster: 824 × 824 mit runden Ecken, 100 Rand. -->
+  <defs>
+    <linearGradient id="grund" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#FFF7F1"/>
+      <stop offset="1" stop-color="#FFD9C8"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#grund)"/>
+  <g transform="translate(172 172) scale(6.8)">
+    <path fill="#F0475C" d="M9 67 C13 47 28 32 45 36 C54 38 60 45 62 52 L61 40 C59 33 55 31 52 26 C48 17 56 9 67 9 C80 9 89 17 89 31 C89 45 93 58 91 71 C89 85 75 91 60 91 L19 91 C10 91 7 79 9 67 Z"/>
+    <path fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="4.5" stroke-linecap="round" d="M23 62 C27 52 34 46 44 46"/>
+    <path fill="none" stroke="#C42D45" stroke-width="3.2" stroke-linecap="round" d="M62 52 C63 58 61 63 57 67 M67 19 C72 20 76 24 77 30"/>
+    <path fill="none" stroke="#0B7D6F" stroke-width="3.6" stroke-linecap="round" d="M41 36 C40 31 39 28 36 24"/>
+    <path fill="#0E9C8A" d="M37 25 C27 25 18 18 16 6 C30 6 41 13 37 25 Z"/>
+  </g>
+</svg>
