@@ -36,6 +36,7 @@ describe('Referenzwerte', () => {
     const b = bedarfBerechnen({ geschlecht: 'maennlich', alter: 30, groesseCm: 180, gewichtKg: 75, aktivitaet: 'sitzend', sport: false, ziel: 'halten', tempo: 'sanft' });
     for (const z of Object.values(b.ziele)) {
       if (z.von !== undefined && z.bis !== undefined) expect(z.bis, z.code).toBeGreaterThan(z.von);
+      if (z.optimum) expect(z.optimum.bis, z.code).toBeGreaterThan(z.optimum.von);
       if (z.von !== undefined && z.hoechst !== undefined) expect(z.hoechst, z.code).toBeGreaterThan(z.von);
     }
   });

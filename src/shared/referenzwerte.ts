@@ -9,9 +9,9 @@
  * NNR) oder der WHO. Übernimmt eine Stelle nur den Wert einer anderen, zählt das
  * Original. Geprüft am 03.11.2026.
  *
- * Vorgaben von Lukas (04.11.2026) gehen der Regel vor: Eiweiß (bedarf.ts), Fett, Ballaststoffe,
- * Omega-6 zu Omega-3, EPA und DHA, Leucin je Mahlzeit (ganz unten). Im Programm heißen sie
- * „deine Vorgabe“, nicht Forschungsstand. Für alle anderen Nährstoffe nannte er keine Ersatzwerte.
+ * Zwei Stufen (Lukas, 04.11.2026): Die Werte nach dieser Regel sind das Minimum. Seine eigenen
+ * Vorgaben sind das Optimum: Eiweiß (bedarf.ts), Fett, Ballaststoffe, EPA und DHA, Omega-6 zu Omega-3,
+ * Leucin je Mahlzeit (ganz unten). Für alle anderen Nährstoffe gibt es nur das Minimum.
  *
  * Bewusste Ausnahmen von der Regel:
  * - Folat: EFSA 2014 statt DGE 2015, weil der BLS Folat genauso rechnet wie die
@@ -104,7 +104,8 @@ export const REFERENZWERTE: readonly ReferenzEintrag[] = [
   },
   { code: 'MO', art: 'schaetzwert', quelle: 'EFSA 2013', ...gleich(65) },
 
-  // Makros
+  // Makros und Ballaststoffe
+  { code: 'FIBT', art: 'richtwert', quelle: 'DGE/ÖGE 2021', ...gleich(30) },
   {
     code: 'WATER',
     art: 'schaetzwert',
@@ -157,17 +158,19 @@ export const HINWEISE_OHNE_ZIEL: Readonly<Record<string, string>> = {
   CR: 'Kein Ziel: Es ist nicht belegt, dass der Körper Chrom braucht (EFSA 2014, NNR 2023).',
 };
 
-// Vorgaben von Lukas (04.11.2026). Die Fachstellen sehen es teils anders, das steht jeweils dabei.
-export const FETT_SPANNE = { von: 0.25, bis: 0.35 }; // Anteil an der Energie. Passt zu EFSA (20–35 %) und NNR 2023 (25–40 %).
-export const BALLASTSTOFFE_G = { von: 40, bis: 50 }; // Über den Fachstellen: DGE 2021 mindestens 30 g, NNR 2023 25–35 g, WHO 2023 mindestens 25 g.
+// Optimum, Vorgaben von Lukas (04.11.2026). Die Fachstellen sehen es teils anders, das steht jeweils dabei.
+export const FETT_OPTIMUM_ANTEIL = { von: 0.25, bis: 0.35 }; // Anteil an der Energie. Passt zu EFSA (20–35 %) und NNR 2023 (25–40 %).
+export const BALLASTSTOFFE_OPTIMUM_G = { von: 40, bis: 50 }; // Über den Fachstellen: DGE 2021 mindestens 30 g, NNR 2023 25–35 g, WHO 2023 mindestens 25 g.
 export const OMEGA6_ZU_OMEGA3 = { ideal: 3, hoechst: 5 }; // NNR 2023: Für ein Verhältnis reicht die Beleglage nicht aus.
-export const EPA_DHA_MG = { von: 1000, bis: 2000 }; // EFSA 2010: 250 mg genügen. Kapseln über 1 g am Tag: mehr Vorhofflimmern (Gencer 2021).
+export const EPA_DHA_OPTIMUM_MG = { von: 1000, bis: 2000 }; // Kapseln über 1 g am Tag: mehr Vorhofflimmern (Gencer 2021).
 export const LEUCIN_JE_MAHLZEIT_G = 2.5; // Die Vorgabe nennt keine Zahl; üblich sind 2–3 g. Ob es diese Schwelle gibt, ist umstritten (Übersichtsarbeit 2023).
 
-// Grenzen und Anteile an der Energie
+// Minimum und Grenzen, Anteile an der Energie
+export const FETT_MINIMUM_ANTEIL = 0.25; // NNR 2023
+export const EPA_DHA_MINIMUM_MG = 250; // EFSA 2010
 export const SALZ_HOECHST_G = 5; // EFSA 2019 und WHO: 2 g Natrium am Tag, das sind 5 g Salz (DGE 2016 nennt noch 6 g)
 export const GESAETTIGT_HOECHST_ANTEIL = 0.1; // WHO 2023, NNR 2023
-export const ZUCKER_HOECHST_ANTEIL = 0.1; // Lukas, 03.11.2026: Zucker gesamt, ob frei oder aus Obst. Strenger als WHO und NNR, deren Grenze nur für freien Zucker gilt.
+export const FREIER_ZUCKER_HOECHST_ANTEIL = 0.1; // WHO 2015, NNR 2023 (Lukas, 04.11.2026: nur freier Zucker zählt). Laut WHO wären unter 5 % noch besser.
 export const EINFACH_UNGESAETTIGT_ANTEIL = { von: 0.1, bis: 0.2 }; // NNR 2023
 export const MEHRFACH_UNGESAETTIGT_ANTEIL = { von: 0.05, bis: 0.1 }; // NNR 2023
 export const OMEGA3_ANTEIL = 0.01; // NNR 2023: mindestens 1 %

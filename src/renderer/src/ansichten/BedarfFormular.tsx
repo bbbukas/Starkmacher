@@ -2,7 +2,7 @@
  * Die Eingaben für „Mein Bedarf“. Dieselben Abschnitte erscheinen beim ersten Start
  * Schritt für Schritt und später auf der Seite „Mein Bedarf“ untereinander.
  */
-import { ABNEHMEN_KCAL, AKTIVITAETEN, AUFBAU_ANTEIL, type Bedarf } from '@shared/bedarf';
+import { ABNEHMEN_KCAL, AKTIVITAETEN, AUFBAU_ANTEIL, type Bedarf, type NaehrstoffZiel } from '@shared/bedarf';
 import { datumText, zahlText } from '@shared/format';
 import { geburtsjahrErlaubt, gewichtErlaubt, groesseErlaubt, kcalErlaubt, makroErlaubt, neuestesGewicht, type Geschlecht, type Tempo, type Ziel } from '@shared/profil';
 import { useDaten } from '../daten/DatenKontext';
@@ -167,6 +167,9 @@ export function ZielWahl() {
   );
 }
 
+const stufenText = (ziel: NaehrstoffZiel | undefined) =>
+  ziel?.von !== undefined && ziel.optimum ? `Minimum ${zahlText(ziel.von)} g, Optimum ${zahlText(ziel.optimum.von)}–${zahlText(ziel.optimum.bis)} g` : undefined;
+
 function MakroZahl({ klasse, titel, gramm, text }: { klasse: string; titel: string; gramm: number; text?: string }) {
   return (
     <div className={`makro ${klasse}`}>
@@ -192,8 +195,8 @@ export function BedarfErgebnis({ bedarf }: { bedarf: Bedarf }) {
           <small>kcal am Tag</small>
         </Teller>
         <div className="makros">
-          <MakroZahl klasse="g-aminosaeuren" titel="Eiweiß" gramm={bedarf.eiweissG} text={eigen ? undefined : bedarf.eiweissGrund} />
-          <MakroZahl klasse="g-fettsaeuren" titel="Fett" gramm={bedarf.fettG} text={eigen ? undefined : `${zahlText(bedarf.fettAnteil * 100)} % der Energie (25–35 %)`} />
+          <MakroZahl klasse="g-aminosaeuren" titel="Eiweiß" gramm={bedarf.eiweissG} text={eigen ? undefined : stufenText(bedarf.ziele.PROT625)} />
+          <MakroZahl klasse="g-fettsaeuren" titel="Fett" gramm={bedarf.fettG} text={eigen ? undefined : stufenText(bedarf.ziele.FAT)} />
           <MakroZahl klasse="g-kohlenhydrate" titel="Kohlenhydrate" gramm={bedarf.kohlenhydrateG} text={eigen ? undefined : 'der Rest'} />
         </div>
       </div>

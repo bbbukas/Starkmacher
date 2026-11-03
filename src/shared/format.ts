@@ -28,14 +28,17 @@ export function mengeText(wert: number, n: Pick<Naehrstoff, 'einheit' | 'zeigeIn
   return `${zahlText(anzeige, stellenFuer(anzeige, einheit))} ${einheit}`;
 }
 
+/** Eine Spanne in Worten: „1–1,5 mg“. */
+export function spanneText(von: number, bis: number, n: Pick<Naehrstoff, 'einheit' | 'zeigeInMg'>): string {
+  const inMg = n.zeigeInMg === true;
+  const unten = inMg ? von / 1000 : von;
+  return `${zahlText(unten, stellenFuer(unten, inMg ? 'mg' : n.einheit))}–${mengeText(bis, n)}`;
+}
+
 /** Das Ziel in Worten: „110 mg“, „1–1,5 mg“, „höchstens 6 g“ oder null, wenn es keins gibt. */
 export function zielText(ziel: NaehrstoffZiel | undefined, n: Pick<Naehrstoff, 'einheit' | 'zeigeInMg'>): string | null {
   if (!ziel) return null;
-  if (ziel.von !== undefined && ziel.bis !== undefined) {
-    const inMg = n.zeigeInMg === true;
-    const von = inMg ? ziel.von / 1000 : ziel.von;
-    return `${zahlText(von, stellenFuer(von, inMg ? 'mg' : n.einheit))}–${mengeText(ziel.bis, n)}`;
-  }
+  if (ziel.von !== undefined && ziel.bis !== undefined) return spanneText(ziel.von, ziel.bis, n);
   if (ziel.von !== undefined) return mengeText(ziel.von, n);
   if (ziel.hoechst !== undefined) return `höchstens ${mengeText(ziel.hoechst, n)}`;
   return null;

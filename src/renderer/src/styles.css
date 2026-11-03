@@ -245,6 +245,7 @@ small { font-size: 0.82em; }
 .ziel-zeile .wert { text-align: right; font-weight: 700; white-space: nowrap; }
 .ziel-zeile .wert .leise { font-weight: 400; }
 .ziel-zeile .wert small { display: block; font-weight: 500; color: var(--tinte2); }
+.ziel-zeile .wert .optimum { display: block; font-weight: 800; color: var(--zweit); }
 .ziel-hinweis { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--tinte2); }
 .art { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--flaeche2); color: var(--tinte2); font-size: 10px; font-weight: 800; margin-left: 5px; vertical-align: 1px; cursor: help; text-decoration: none; }
 .legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0 4px; font-size: 12.5px; color: var(--tinte2); }

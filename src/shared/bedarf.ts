@@ -7,9 +7,11 @@ import type { Aktivitaet, Geschlecht, Gewicht, Profil, Tempo, Ziel, ZielStand } 
 import { neuestesGewicht } from './profil';
 import {
   ALPHA_LINOLENSAEURE_ANTEIL,
-  BALLASTSTOFFE_G,
+  BALLASTSTOFFE_OPTIMUM_G,
   EINFACH_UNGESAETTIGT_ANTEIL,
-  FETT_SPANNE,
+  FETT_MINIMUM_ANTEIL,
+  FETT_OPTIMUM_ANTEIL,
+  FREIER_ZUCKER_HOECHST_ANTEIL,
   GESAETTIGT_HOECHST_ANTEIL,
   HOECHSTWERTE,
   LINOLSAEURE_ANTEIL,
@@ -17,7 +19,6 @@ import {
   OMEGA3_ANTEIL,
   REFERENZWERTE,
   SALZ_HOECHST_G,
-  ZUCKER_HOECHST_ANTEIL,
   type Altersgruppe,
   type HoechstArt,
   type WertArt,
@@ -50,13 +51,16 @@ export const AUFBAU_ANTEIL: Readonly<Record<Tempo, number>> = { sanft: 0.05, mit
 export const UNTERGRENZE_KCAL: Readonly<Record<Geschlecht, number>> = { weiblich: 1200, maennlich: 1500 };
 
 /**
- * Eiweiß nach Lukas' Vorgabe (04.11.2026): 1,2–1,6 g je kg, bei Sport oder Kaloriendefizit 1,6–2,0 g je kg.
- * Geplant wird mit der Mitte der Spanne. Die Forschung stützt das weitgehend: DGE-Positionspapier „Proteinzufuhr
- * im Sport“ (2020) 1,2–2,0 g je kg; Morton 2018 Knick bei etwa 1,6 g (Spanne 1,0–2,2 g); Nordische Empfehlungen 2023
- * ab 65 Jahren 1,2–1,5 g je kg.
+ * Eiweiß hat zwei Stufen (Lukas, 04.11.2026).
+ * Minimum: 0,83 g je kg (EFSA 2012, NNR 2023), ab 65 Jahren 1,2 g je kg (NNR 2023), beim Abnehmen und
+ * Muskelaufbau 1,6 g je kg (DGE-Positionspapier „Proteinzufuhr im Sport“ 2020, Morton 2018).
+ * Optimum: 1,2–1,6 g je kg, bei Sport oder Kaloriendefizit 1,6–2,0 g je kg. Geplant wird mit der Mitte des Optimums.
  */
-export const EIWEISS_G_JE_KG = { von: 1.2, bis: 1.6 };
-export const EIWEISS_HOCH_G_JE_KG = { von: 1.6, bis: 2.0 };
+const EIWEISS_MINIMUM_G_JE_KG = 0.83;
+const EIWEISS_MINIMUM_AB_65_G_JE_KG = 1.2;
+const EIWEISS_MINIMUM_FUER_ZIELE_G_JE_KG = 1.6;
+export const EIWEISS_OPTIMUM_G_JE_KG = { von: 1.2, bis: 1.6 };
+export const EIWEISS_OPTIMUM_HOCH_G_JE_KG = { von: 1.6, bis: 2.0 };
 const FETT_ANTEIL = 0.3;
 const FETT_ANTEIL_HOHE_AKTIVITAET = 0.35;
 
@@ -107,15 +111,16 @@ export function rechengewichtFuerEiweiss(gewichtKg: number, groesseCm: number): 
 
 const brauchtVielEiweiss = (ziel: Ziel, sport: boolean) => ziel === 'abnehmen' || ziel === 'aufbauen' || sport;
 
-/** Eiweißziel: die Spanne in Gramm, die Mitte zum Planen und in Worten, wie es zustande kommt. */
-export function eiweissZiel(ziel: Ziel, sport: boolean, rechengewichtKg: number): { von: number; bis: number; gramm: number; grund: string } {
-  const spanne = brauchtVielEiweiss(ziel, sport) ? EIWEISS_HOCH_G_JE_KG : EIWEISS_G_JE_KG;
-  const mitte = (spanne.von + spanne.bis) / 2;
+/** Eiweißziel in Gramm: das Minimum, das Optimum und dessen Mitte zum Planen. */
+export function eiweissZiel(ziel: Ziel, sport: boolean, alter: number, rechengewichtKg: number): { minimum: number; von: number; bis: number; gramm: number } {
+  const optimum = brauchtVielEiweiss(ziel, sport) ? EIWEISS_OPTIMUM_HOCH_G_JE_KG : EIWEISS_OPTIMUM_G_JE_KG;
+  const fuerZiel = ziel === 'abnehmen' || ziel === 'aufbauen';
+  const minimum = fuerZiel ? EIWEISS_MINIMUM_FUER_ZIELE_G_JE_KG : alter >= 65 ? EIWEISS_MINIMUM_AB_65_G_JE_KG : EIWEISS_MINIMUM_G_JE_KG;
   return {
-    von: Math.round(rechengewichtKg * spanne.von),
-    bis: Math.round(rechengewichtKg * spanne.bis),
-    gramm: Math.round(rechengewichtKg * mitte),
-    grund: `${mitte.toLocaleString('de-DE')} g je kg (${spanne.von.toLocaleString('de-DE')}–${spanne.bis.toLocaleString('de-DE', { minimumFractionDigits: 1 })} g)`,
+    minimum: Math.round(rechengewichtKg * minimum),
+    von: Math.round(rechengewichtKg * optimum.von),
+    bis: Math.round(rechengewichtKg * optimum.bis),
+    gramm: Math.round((rechengewichtKg * (optimum.von + optimum.bis)) / 2),
   };
 }
 
@@ -139,10 +144,12 @@ export type ZielArt = WertArt | 'hoechstwert' | 'eigener-wert';
 export interface NaehrstoffZiel {
   code: string;
   art: ZielArt;
-  /** Darauf soll man kommen. Fehlt, wenn es nur eine Obergrenze gibt (Salz, Zucker, …). */
+  /** Das Minimum: Darauf soll man mindestens kommen. Fehlt, wenn es nur eine Obergrenze gibt (Salz, …). */
   von?: number;
   /** Obere Grenze einer Spanne (einfach und mehrfach ungesättigte Fettsäuren). */
   bis?: number;
+  /** Das Optimum, Lukas' Vorgabe. Gibt es nur bei Eiweiß, Fett und Ballaststoffen. */
+  optimum?: { von: number; bis: number };
   /** Darüber sollte man auf Dauer nicht liegen. */
   hoechst?: number;
   hoechstArt?: HoechstArt;
@@ -169,9 +176,9 @@ export interface Bedarf {
   fettG: number;
   kohlenhydrateG: number;
   rechengewichtKg: number;
-  /** Wie das Eiweißziel zustande kommt, in Worten. */
-  eiweissGrund: string;
   fettAnteil: number;
+  /** Obergrenze für freien Zucker. Der BLS kennt ihn nicht, deshalb ist er kein Eintrag in `ziele`. */
+  freierZuckerHoechstG: number;
   ziele: Readonly<Record<string, NaehrstoffZiel>>;
 }
 
@@ -179,7 +186,7 @@ const wertFuer = (wert: number | readonly [number, number, number, number], grup
 
 /** Die Kohlenhydrate füllen auf, was nach Eiweiß, Fett und Ballaststoffen noch frei ist. */
 function kohlenhydrateAlsRest(kcal: number, eiweissG: number, fettG: number): number {
-  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_G.von * KCAL_JE_G_BALLASTSTOFFE;
+  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_OPTIMUM_G.von * KCAL_JE_G_BALLASTSTOFFE;
   return Math.max(0, Math.round(rest / KCAL_JE_G_KOHLENHYDRATE));
 }
 
@@ -197,7 +204,7 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
   const kcal = Math.max(wunsch, grenze);
 
   const rechengewicht = rechengewichtFuerEiweiss(e.gewichtKg, e.groesseCm);
-  const eiweiss = eiweissZiel(e.ziel, e.sport, rechengewicht);
+  const eiweiss = eiweissZiel(e.ziel, e.sport, e.alter, rechengewicht);
   const fettAnteil = pal > 1.7 ? FETT_ANTEIL_HOHE_AKTIVITAET : FETT_ANTEIL;
   const eiweissG = eigen && e.eigeneEiweissG != null ? e.eigeneEiweissG : eiweiss.gramm;
   const fettG = eigen && e.eigeneFettG != null ? e.eigeneFettG : Math.round((kcal * fettAnteil) / KCAL_JE_G_FETT);
@@ -234,25 +241,25 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
 
   const eigenOder = (quelle: string) => (eigen ? 'dein eigener Wert' : quelle);
   ziele.ENERCC = { code: 'ENERCC', art: eigenerOderRicht, von: kcal, quelle: eigenOder('Grundumsatz nach DGE × Aktivität') };
+  const eiweissQuelle = e.ziel === 'halten' ? (e.alter >= 65 ? 'NNR 2023' : 'EFSA 2012, NNR 2023') : 'DGE 2020, Morton 2018';
   ziele.PROT625 = {
     code: 'PROT625',
-    art: 'eigener-wert',
-    ...(eigen ? { von: eiweissG } : { von: eiweiss.von, bis: eiweiss.bis }),
-    quelle: 'deine Vorgabe',
+    art: eigen ? 'eigener-wert' : e.ziel === 'halten' && e.alter < 65 ? 'empfehlung' : 'richtwert',
+    ...(eigen ? { von: eiweissG } : { von: eiweiss.minimum, optimum: { von: eiweiss.von, bis: eiweiss.bis } }),
+    quelle: eigenOder(eiweissQuelle),
     ...(!eigen && brauchtVielEiweiss(e.ziel, e.sport) ? { hinweis: 'Ab 2 g je kg über lange Zeit ist laut DGE ein Schaden an den Nieren nicht auszuschließen.' } : {}),
   };
   ziele.FAT = {
     code: 'FAT',
-    art: 'eigener-wert',
-    ...(eigen ? { von: fettG } : { von: kcalAlsG(FETT_SPANNE.von, KCAL_JE_G_FETT), bis: kcalAlsG(FETT_SPANNE.bis, KCAL_JE_G_FETT) }),
-    quelle: 'deine Vorgabe',
+    art: eigenerOderRicht,
+    ...(eigen
+      ? { von: fettG }
+      : { von: kcalAlsG(FETT_MINIMUM_ANTEIL, KCAL_JE_G_FETT), optimum: { von: kcalAlsG(FETT_OPTIMUM_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(FETT_OPTIMUM_ANTEIL.bis, KCAL_JE_G_FETT) } }),
+    quelle: eigenOder('NNR 2023'),
   };
   ziele.FIBT = {
-    code: 'FIBT',
-    art: 'eigener-wert',
-    von: BALLASTSTOFFE_G.von,
-    bis: BALLASTSTOFFE_G.bis,
-    quelle: 'deine Vorgabe',
+    ...ziele.FIBT!,
+    optimum: BALLASTSTOFFE_OPTIMUM_G,
     hinweis: 'Gut sind fermentierbare Quellen wie Hafer und Hülsenfrüchte. Langsam steigern und genug trinken (DGE).',
   };
   ziele.CHO = {
@@ -263,14 +270,6 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
     hinweis: 'Am besten aus Vollkorn, Gemüse, Obst und Hülsenfrüchten (WHO 2023).',
   };
   ziele.FASAT = { code: 'FASAT', art: 'hoechstwert', hoechst: kcalAlsG(GESAETTIGT_HOECHST_ANTEIL, KCAL_JE_G_FETT), hoechstArt: 'hoechstwert', quelle: 'WHO 2023, NNR 2023' };
-  ziele.SUGAR = {
-    code: 'SUGAR',
-    art: 'hoechstwert',
-    hoechst: kcalAlsG(ZUCKER_HOECHST_ANTEIL, KCAL_JE_G_KOHLENHYDRATE),
-    hoechstArt: 'hoechstwert',
-    quelle: 'deine Regel, angelehnt an WHO 2015',
-    hinweis: 'Zählt allen Zucker, auch den aus Obst und Milch.',
-  };
   ziele.NACL = { code: 'NACL', art: 'hoechstwert', hoechst: SALZ_HOECHST_G, hoechstArt: 'hoechstwert', quelle: 'EFSA 2019, WHO' };
   ziele.FAMS = { code: 'FAMS', art: 'richtwert', von: kcalAlsG(EINFACH_UNGESAETTIGT_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(EINFACH_UNGESAETTIGT_ANTEIL.bis, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
   ziele.FAPU = { code: 'FAPU', art: 'richtwert', von: kcalAlsG(MEHRFACH_UNGESAETTIGT_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(MEHRFACH_UNGESAETTIGT_ANTEIL.bis, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
@@ -290,8 +289,8 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
     fettG,
     kohlenhydrateG,
     rechengewichtKg: Math.round(rechengewicht * 10) / 10,
-    eiweissGrund: eiweiss.grund,
     fettAnteil,
+    freierZuckerHoechstG: kcalAlsG(FREIER_ZUCKER_HOECHST_ANTEIL, KCAL_JE_G_KOHLENHYDRATE),
     ziele,
   };
 }
