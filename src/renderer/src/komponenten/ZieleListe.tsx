@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import type { Bedarf, ZielArt } from '@shared/bedarf';
 import { mengeText, zielText } from '@shared/format';
 import { GRUPPEN, naehrstoffeDerGruppe, type GruppenId } from '@shared/naehrstoffe';
+import { HINWEISE_OHNE_ZIEL } from '@shared/referenzwerte';
 
 const ART: Readonly<Record<ZielArt, { kurz: string; titel: string }>> = {
   empfehlung: { kurz: 'E', titel: 'Empfehlung' },
@@ -11,8 +12,8 @@ const ART: Readonly<Record<ZielArt, { kurz: string; titel: string }>> = {
   'eigener-wert': { kurz: 'D', titel: 'Dein eigener Wert' },
 };
 
-export const ArtMarke = ({ art }: { art: ZielArt }) => (
-  <abbr className="art" title={ART[art].titel}>
+export const ArtMarke = ({ art, quelle }: { art: ZielArt; quelle?: string }) => (
+  <abbr className="art" title={quelle ? `${ART[art].titel}. Quelle: ${quelle}` : ART[art].titel}>
     {ART[art].kurz}
   </abbr>
 );
@@ -44,7 +45,7 @@ export function ZieleListe({ bedarf, ausgeblendet }: { bedarf: Bedarf; ausgeblen
                   <div key={n.code} className="ziel-zeile">
                     <span className="name">
                       {n.name}
-                      {ziel && <ArtMarke art={ziel.art} />}
+                      {ziel && <ArtMarke art={ziel.art} quelle={ziel.quelle} />}
                     </span>
                     <span className="wert">
                       {text ?? <span className="leise">ohne Ziel</span>}
@@ -55,7 +56,7 @@ export function ZieleListe({ bedarf, ausgeblendet }: { bedarf: Bedarf; ausgeblen
                         </small>
                       )}
                     </span>
-                    {ziel?.hinweis && <p className="ziel-hinweis">{ziel.hinweis}</p>}
+                    {(ziel?.hinweis ?? HINWEISE_OHNE_ZIEL[n.code]) && <p className="ziel-hinweis">{ziel?.hinweis ?? HINWEISE_OHNE_ZIEL[n.code]}</p>}
                   </div>
                 );
               })}

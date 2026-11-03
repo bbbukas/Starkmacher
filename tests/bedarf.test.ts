@@ -4,7 +4,7 @@ import {
   altersgruppe,
   bedarfAusProfil,
   bedarfBerechnen,
-  eiweissJeKg,
+  eiweissZiel,
   fehlendeAngaben,
   grundumsatz,
   palWert,
@@ -14,6 +14,7 @@ import {
   type BedarfEingabe,
 } from '@shared/bedarf';
 import { leeresProfil, type Profil } from '@shared/profil';
+import { HINWEISE_OHNE_ZIEL } from '@shared/referenzwerte';
 
 const person = (teil: Partial<BedarfEingabe> = {}): BedarfEingabe => ({
   geschlecht: 'maennlich',
@@ -56,14 +57,15 @@ describe('Energiebedarf', () => {
 });
 
 describe('Tempo', () => {
-  const basis = bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd' })).kcal;
+  const eingabe = { gewichtKg: 90, aktivitaet: 'wechselnd' as const };
+  const basis = bedarfBerechnen(person(eingabe)).kcal;
   it('Abnehmen: sanft 275, mittel 550 kcal weniger', () => {
-    expect(bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd', ziel: 'abnehmen', tempo: 'sanft' })).kcal).toBe(basis - 275);
-    expect(bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd', ziel: 'abnehmen', tempo: 'mittel' })).kcal).toBe(basis - 550);
+    expect(bedarfBerechnen(person({ ...eingabe, ziel: 'abnehmen', tempo: 'sanft' })).kcal).toBe(basis - 275);
+    expect(bedarfBerechnen(person({ ...eingabe, ziel: 'abnehmen', tempo: 'mittel' })).kcal).toBe(basis - 550);
   });
-  it('Muskeln aufbauen: sanft 250, mittel 400 kcal mehr', () => {
-    expect(bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd', ziel: 'aufbauen', tempo: 'sanft' })).kcal).toBe(basis + 250);
-    expect(bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd', ziel: 'aufbauen', tempo: 'mittel' })).kcal).toBe(basis + 400);
+  it('Muskeln aufbauen: sanft 5 %, mittel 15 % über dem Verbrauch', () => {
+    expect(bedarfBerechnen(person({ ...eingabe, ziel: 'aufbauen', tempo: 'sanft' })).kcal).toBeCloseTo(basis * 1.05, -1);
+    expect(bedarfBerechnen(person({ ...eingabe, ziel: 'aufbauen', tempo: 'mittel' })).kcal).toBeCloseTo(basis * 1.15, -1);
   });
 });
 
@@ -93,17 +95,25 @@ describe('Untergrenze', () => {
 });
 
 describe('Makros', () => {
-  it('Eiweiß: 0,8 g je kg, ab 65 Jahren 1,0 g', () => {
-    expect(eiweissJeKg('halten', 40)).toBe(0.8);
-    expect(eiweissJeKg('halten', 64)).toBe(0.8);
-    expect(eiweissJeKg('halten', 65)).toBe(1.0);
-    expect(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG).toBe(56);
-    expect(bedarfBerechnen(person({ gewichtKg: 70, alter: 70 })).eiweissG).toBe(70);
+  it('Eiweiß beim Halten: 15 % der Energie, nie unter 0,83 g je kg', () => {
+    expect(eiweissZiel('halten', 40, 2318, 70).gramm).toBe(87); // rund 1,2 g je kg
+    expect(eiweissZiel('halten', 40, 2318, 70).grund).toBe('15 % der Energie');
+    expect(eiweissZiel('halten', 40, 1500, 100).gramm).toBe(83); // 15 % wären nur 56 g
+    expect(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG).toBe(87);
+  });
+  it('mehr Bewegung heißt auch beim Halten mehr Eiweiß', () => {
+    expect(bedarfBerechnen(person({ gewichtKg: 70, sport: true })).eiweissG).toBeGreaterThan(bedarfBerechnen(person({ gewichtKg: 70 })).eiweissG);
+  });
+  it('Eiweiß ab 65 Jahren: 18 % der Energie, zwischen 1,2 und 1,5 g je kg', () => {
+    expect(eiweissZiel('halten', 70, 2172, 70).gramm).toBe(98);
+    expect(eiweissZiel('halten', 70, 1500, 70).gramm).toBe(84); // nicht unter 1,2 g je kg
+    expect(eiweissZiel('halten', 70, 3000, 70).gramm).toBe(105); // nicht über 1,5 g je kg
+    expect(eiweissZiel('halten', 64, 2172, 70).gramm).toBe(81); // unter 65 gelten die 15 %
   });
   it('Eiweiß: 1,6 g je kg beim Abnehmen und Muskelaufbau, auch ab 65', () => {
     expect(bedarfBerechnen(person({ gewichtKg: 70, ziel: 'abnehmen' })).eiweissG).toBe(112);
     expect(bedarfBerechnen(person({ gewichtKg: 70, ziel: 'aufbauen' })).eiweissG).toBe(112);
-    expect(eiweissJeKg('abnehmen', 70)).toBe(1.6);
+    expect(eiweissZiel('abnehmen', 70, 1800, 70)).toEqual({ gramm: 112, grund: '1,6 g je kg' });
   });
   it('Eiweiß: höchstens mit dem Gewicht bei BMI 25, ohne Sprung', () => {
     expect(rechengewichtFuerEiweiss(70, 180)).toBe(70); // BMI 21,6
@@ -128,12 +138,12 @@ describe('Makros', () => {
     const wenig = bedarfBerechnen(person({ ziel: 'eigene', eigeneKcal: 1700, gewichtKg: 300, groesseCm: 250 }));
     expect(wenig.kohlenhydrateG).toBeGreaterThanOrEqual(0);
   });
-  it('Grenzen: gesättigte Fettsäuren und Zucker höchstens 10 %, Salz 6 g, Ballaststoffe mindestens 30 g', () => {
+  it('Grenzen: gesättigte Fettsäuren und Zucker höchstens 10 %, Salz 5 g, Ballaststoffe mindestens 30 g', () => {
     const b = bedarfBerechnen(person({ gewichtKg: 90, aktivitaet: 'wechselnd' }));
     expect(b.ziele.FASAT?.hoechst).toBeCloseTo((b.kcal * 0.1) / 9, 0);
     expect(b.ziele.SUGAR?.hoechst).toBeCloseTo((b.kcal * 0.1) / 4, 0);
     expect(b.ziele.SUGAR?.von).toBeUndefined();
-    expect(b.ziele.NACL?.hoechst).toBe(6);
+    expect(b.ziele.NACL?.hoechst).toBe(5);
     expect(b.ziele.FIBT).toMatchObject({ von: 30, art: 'richtwert' });
   });
   it('Eigene Werte gelten, wenn sie eingetragen sind', () => {
@@ -156,35 +166,71 @@ describe('Mikronährstoffe nach Alter und Geschlecht', () => {
     expect(frau.FE?.von).toBe(16);
     expect(mann.ZN?.von).toBe(14);
     expect(frau.ZN?.von).toBe(8);
+    expect(mann.CU?.von).toBe(1600);
+    expect(frau.CU?.von).toBe(1300);
     expect(mann.ID?.von).toBe(150);
     expect(frau.ID?.von).toBe(150);
+    expect(mann.WATER?.von).toBe(2500);
+    expect(frau.WATER?.von).toBe(2000);
   });
   it('Werte je Alter', () => {
     const mit = (alter: number) => bedarfBerechnen(person({ alter })).ziele;
-    expect(mit(20).THIA?.von).toBe(1.3);
-    expect(mit(40).THIA?.von).toBe(1.2);
-    expect(mit(70).THIA?.von).toBe(1.1);
-    expect(mit(40).VITK?.von).toBe(70);
-    expect(mit(55).VITK?.von).toBe(80);
     expect(mit(60).VITAA?.von).toBe(850);
     expect(mit(66).VITAA?.von).toBe(800);
+    expect(mit(20).CA?.von).toBe(1000);
+    expect(mit(40).CA?.von).toBe(950);
+    expect(mit(40).VITD?.von).toBe(10);
+    expect(mit(70).VITD?.von).toBe(10);
+    expect(mit(71).VITD?.von).toBe(20);
     const frau55 = bedarfBerechnen(person({ geschlecht: 'weiblich', gewichtKg: 60, alter: 55 })).ziele;
     expect(frau55.FE?.von).toBe(14);
+  });
+  it('Vitamin B1 richtet sich nach der Energie: 0,1 mg je Megajoule', () => {
+    const b = bedarfBerechnen(person());
+    expect(b.ziele.THIA?.von).toBeCloseTo((0.1 * b.kcal) / 239, 2);
+    expect(bedarfBerechnen(person({ aktivitaet: 'anstrengend' })).ziele.THIA?.von).toBeGreaterThan(b.ziele.THIA!.von!);
+  });
+  it('aktualisierte Werte nach dem jüngsten Stand', () => {
+    const z = bedarfBerechnen(person()).ziele;
+    expect(z.K?.von).toBe(3500);
+    expect(z.FOL?.von).toBe(330);
+    expect(z.RIBF?.von).toBe(1.6);
+    expect(z.VITK?.von).toBe(70);
+    expect(z.MN?.von).toBe(3000);
+    expect(z.MO?.von).toBe(65);
+    expect(z.CLD?.von).toBe(3100);
+    expect(z.VITE?.von).toBe(8);
+    expect(z.P?.von).toBe(550);
+  });
+  it('Chrom hat kein Ziel, weil nicht belegt ist, dass der Körper es braucht', () => {
+    expect(bedarfBerechnen(person()).ziele.CR).toBeUndefined();
+    expect(HINWEISE_OHNE_ZIEL.CR).toContain('EFSA');
+  });
+  it('Salz höchstens 5 g, Natrium höchstens 2 g', () => {
+    const z = bedarfBerechnen(person()).ziele;
+    expect(z.NACL?.hoechst).toBe(5);
+    expect(z.NA).toMatchObject({ art: 'hoechstwert', hoechst: 2000 });
+    expect(z.NA?.von).toBeUndefined();
+  });
+  it('jedes Ziel nennt seine Quelle', () => {
+    for (const z of Object.values(bedarfBerechnen(person()).ziele)) expect(z.quelle, z.code).toBeTruthy();
   });
   it('unterscheidet Empfehlung, Schätzwert, Richtwert und Höchstwert', () => {
     const z = bedarfBerechnen(person()).ziele;
     expect(z.VITC?.art).toBe('empfehlung');
-    expect(z.VITD?.art).toBe('schaetzwert');
+    expect(z.VITE?.art).toBe('schaetzwert');
     expect(z.FIBT?.art).toBe('richtwert');
     expect(z.NACL?.art).toBe('hoechstwert');
-    expect(z.CA).toMatchObject({ von: 1000, hoechst: 2500, hoechstArt: 'hoechstwert' });
+    expect(z.CA).toMatchObject({ von: 950, hoechst: 2500, hoechstArt: 'hoechstwert' });
     expect(z.FE).toMatchObject({ von: 11, hoechst: 40, hoechstArt: 'sichere-menge' });
-    expect(z.CU).toMatchObject({ von: 1000, bis: 1500, hoechst: 5000 });
+    expect(z.CU).toMatchObject({ von: 1600, hoechst: 5000 });
   });
-  it('Vitamin D und Fluorid gelten nicht als Lücke', () => {
+  it('was man nicht gezielt essen muss, gilt nicht als Lücke', () => {
     const z = bedarfBerechnen(person()).ziele;
     expect(z.VITD?.keineLuecke).toBe(true);
     expect(z.FD?.keineLuecke).toBe(true);
+    expect(z.CLD?.keineLuecke).toBe(true);
+    expect(z.WATER?.keineLuecke).toBe(true);
     expect(z.VITC?.keineLuecke).toBeUndefined();
   });
   it('Magnesium hat keinen Höchstwert, Retinol nur einen', () => {
@@ -193,10 +239,13 @@ describe('Mikronährstoffe nach Alter und Geschlecht', () => {
     expect(z.RETOL).toMatchObject({ art: 'hoechstwert', hoechst: 3000 });
     expect(z.RETOL?.von).toBeUndefined();
   });
-  it('Omega-Fettsäuren als Anteil der Energie', () => {
+  it('Fettsäuren als Anteil der Energie', () => {
     const b = bedarfBerechnen(person({ ziel: 'eigene', eigeneKcal: 2250 }));
     expect(b.ziele['F18:2CN6']?.von).toBeCloseTo(6.3, 1);
     expect(b.ziele['F18:3CN3']?.von).toBeCloseTo(1.3, 1);
+    expect(b.ziele.FAPUN3?.von).toBeCloseTo(2.5, 1);
+    expect(b.ziele.FAMS).toMatchObject({ von: 25, bis: 50 });
+    expect(b.ziele.FAPU).toMatchObject({ von: 12.5, bis: 25 });
   });
 });
 

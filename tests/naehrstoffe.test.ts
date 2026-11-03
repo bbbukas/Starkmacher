@@ -28,14 +28,16 @@ describe('Referenzwerte', () => {
   });
   it('alle wichtigen Vitamine und Mineralstoffe haben ein Ziel', () => {
     const b = bedarfBerechnen({ geschlecht: 'maennlich', alter: 30, groesseCm: 180, gewichtKg: 75, aktivitaet: 'sitzend', sport: false, ziel: 'halten', tempo: 'sanft' });
-    for (const code of ['VITAA', 'VITD', 'VITE', 'VITK', 'VITC', 'THIA', 'RIBF', 'NIAEQ', 'PANTAC', 'VITB6', 'BIOT', 'FOL', 'VITB12', 'CA', 'MG', 'K', 'NA', 'CLD', 'P', 'FE', 'ZN', 'ID', 'CU', 'MN', 'FD', 'CR', 'MO']) {
+    for (const code of ['VITAA', 'VITD', 'VITE', 'VITK', 'VITC', 'THIA', 'RIBF', 'NIAEQ', 'PANTAC', 'VITB6', 'BIOT', 'FOL', 'VITB12', 'CA', 'MG', 'K', 'NA', 'CLD', 'P', 'FE', 'ZN', 'ID', 'CU', 'MN', 'FD', 'MO', 'NACL']) {
       expect(b.ziele[code], code).toBeDefined();
     }
   });
   it('Spannen sind von klein nach groß, Höchstwerte liegen über dem Ziel', () => {
-    for (const r of REFERENZWERTE) if (r.bis !== undefined) expect(r.bis, r.code).toBeGreaterThan(r.maennlich as number);
     const b = bedarfBerechnen({ geschlecht: 'maennlich', alter: 30, groesseCm: 180, gewichtKg: 75, aktivitaet: 'sitzend', sport: false, ziel: 'halten', tempo: 'sanft' });
-    for (const z of Object.values(b.ziele)) if (z.von !== undefined && z.hoechst !== undefined) expect(z.hoechst, z.code).toBeGreaterThan(z.von);
+    for (const z of Object.values(b.ziele)) {
+      if (z.von !== undefined && z.bis !== undefined) expect(z.bis, z.code).toBeGreaterThan(z.von);
+      if (z.von !== undefined && z.hoechst !== undefined) expect(z.hoechst, z.code).toBeGreaterThan(z.von);
+    }
   });
 });
 
@@ -61,9 +63,9 @@ describe('Anzeige', () => {
     expect(mengeText(12000, b6)).toBe('12 mg');
   });
   it('Ziele in Worten', () => {
-    expect(zielText({ code: 'VITC', art: 'empfehlung', von: 110 }, vitC)).toBe('110 mg');
-    expect(zielText({ code: 'CU', art: 'schaetzwert', von: 1000, bis: 1500 }, kupfer)).toBe('1–1,5 mg');
-    expect(zielText({ code: 'NACL', art: 'hoechstwert', hoechst: 6 }, salz)).toBe('höchstens 6 g');
+    expect(zielText({ code: 'VITC', art: 'empfehlung', von: 110, quelle: 'x' }, vitC)).toBe('110 mg');
+    expect(zielText({ code: 'CU', art: 'schaetzwert', von: 1000, bis: 1500, quelle: 'x' }, kupfer)).toBe('1–1,5 mg');
+    expect(zielText({ code: 'NACL', art: 'hoechstwert', hoechst: 5, quelle: 'x' }, salz)).toBe('höchstens 5 g');
     expect(zielText(undefined, salz)).toBeNull();
   });
   it('liest Zahlen mit Komma oder Punkt, Unsinn wird nichts', () => {

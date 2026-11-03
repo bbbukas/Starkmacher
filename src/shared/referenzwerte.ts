@@ -1,35 +1,38 @@
 /**
  * Die Referenzwerte, gesammelt an einer Stelle mit Quelle und Stand, damit sie
- * sich später leicht aktualisieren lassen (Bauauftrag 4.2). Alle Werte stehen in
- * der Einheit des BLS (siehe naehrstoffe.ts).
+ * sich später leicht aktualisieren lassen. Alle Werte stehen in der Einheit des
+ * BLS (siehe naehrstoffe.ts).
  *
- * Abgelesen am 03.11.2026 von den Seiten der DGE, einschließlich der Korrektur
- * vom Mai 2026 (sie betrifft nur eine Tabellenüberschrift, keinen Wert).
+ * Regel (Lukas, 03.11.2026: „der heutige Stand der Wissenschaft, in jeder
+ * Information“): Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche
+ * Herleitung einer europäischen Fachstelle (DGE/ÖGE, EFSA, Nordische Empfehlungen
+ * NNR) oder der WHO. Übernimmt eine Stelle nur den Wert einer anderen, zählt das
+ * Original. Geprüft am 03.11.2026.
  *
- * Annahmen, wo die DGE nach etwas unterscheidet, das Starkmacher nicht abfragt:
+ * Bewusste Ausnahmen von der Regel:
+ * - Folat: EFSA 2014 statt DGE 2015, weil der BLS Folat genauso rechnet wie die
+ *   EFSA (Folsäure × 1,7). Die Nordischen Empfehlungen 2023 bestätigen den Wert.
+ * - Ballaststoffe: DGE 2021 (mindestens 30 g) statt WHO 2023 (mindestens 25 g),
+ *   weil die WHO nur die Untergrenze nennt. NNR 2023 empfiehlt 25–35 g.
+ *
+ * Annahmen, wo die Quelle nach etwas unterscheidet, das Starkmacher nicht abfragt:
  * - Zink: Wert für mittlere Phytatzufuhr (bei viel Vollkorn und Hülsenfrüchten
  *   nennt die DGE 16 mg statt 14 mg bzw. 10 mg statt 8 mg).
  * - Eisen bei Frauen: unter 51 Jahren 16 mg, ab 51 Jahren 14 mg (die DGE
  *   unterscheidet vor und nach den Wechseljahren).
  * - Vitamin C: ohne den Zuschlag für Rauchende (155 mg bzw. 135 mg).
  */
-export const QUELLE_DGE = {
-  name: 'DGE/ÖGE-Referenzwerte für die Nährstoffzufuhr',
-  fassung: '3. Auflage, 1. Ausgabe 2025, mit Korrektur vom Mai 2026',
-  abgelesen: '2026-11-03',
-  adresse: 'dge.de/wissenschaft/referenzwerte',
-} as const;
-
-export const QUELLE_EFSA = {
-  name: 'EFSA: Overview on Tolerable Upper Intake Levels',
-  fassung: 'Version 11, August 2025',
-  abgelesen: '2026-11-03',
-  adresse: 'efsa.europa.eu',
-} as const;
+export const QUELLEN = [
+  { kurz: 'DGE/ÖGE', titel: 'DGE/ÖGE-Referenzwerte für die Nährstoffzufuhr, 3. Auflage 2025, mit Korrektur vom Mai 2026', adresse: 'dge.de/wissenschaft/referenzwerte' },
+  { kurz: 'EFSA', titel: 'EFSA: Dietary Reference Values for nutrients, Summary report (2017), dazu Natrium und Chlorid (2019), Chrom (2014)', adresse: 'efsa.europa.eu' },
+  { kurz: 'EFSA, Höchstwerte', titel: 'EFSA: Overview on Tolerable Upper Intake Levels, Version 11, August 2025', adresse: 'efsa.europa.eu' },
+  { kurz: 'NNR', titel: 'Nordic Nutrition Recommendations 2023, Nordic Council of Ministers', adresse: 'pub.norden.org/nord2023-003' },
+  { kurz: 'WHO', titel: 'WHO-Leitlinien zu Fett und Kohlenhydraten (2023), Natrium (2012), freiem Zucker (2015)', adresse: 'who.int' },
+] as const;
 
 export type WertArt = 'empfehlung' | 'schaetzwert' | 'richtwert';
 
-/** Vier Altersgruppen der DGE für Erwachsene: 19 bis unter 25, 25 bis unter 51, 51 bis unter 65, ab 65. */
+/** Vier Altersgruppen für Erwachsene: 18 bis unter 25, 25 bis unter 51, 51 bis unter 65, ab 65. */
 export type Altersgruppe = 0 | 1 | 2 | 3;
 type JeAlter = readonly [number, number, number, number];
 type Wert = number | JeAlter;
@@ -37,12 +40,14 @@ type Wert = number | JeAlter;
 export interface ReferenzEintrag {
   code: string;
   art: WertArt;
-  /** Stand der Ableitung laut DGE. */
-  stand: string;
-  maennlich: Wert;
-  weiblich: Wert;
-  /** Obere Grenze, wo die DGE eine Spanne nennt (Kupfer, Mangan, Chrom, Molybdän). */
-  bis?: number;
+  /** Woher der Wert stammt und aus welchem Jahr die Herleitung ist. */
+  quelle: string;
+  maennlich?: Wert;
+  weiblich?: Wert;
+  /** Statt fester Menge: je Megajoule Energie (Vitamin B1). */
+  jeMJ?: number;
+  /** Ab diesem Alter gilt ein anderer Wert (Vitamin D). */
+  abAlter?: { alter: number; wert: number };
   /** Kurzer Satz neben dem Wert. */
   hinweis?: string;
   /** Wird angezeigt, aber nicht als Lücke gemeldet (Lukas, 03.11.2026 für Vitamin D). */
@@ -53,53 +58,61 @@ const gleich = (wert: Wert) => ({ maennlich: wert, weiblich: wert });
 
 export const REFERENZWERTE: readonly ReferenzEintrag[] = [
   // Vitamine
-  { code: 'VITAA', art: 'empfehlung', stand: '2020', maennlich: [850, 850, 850, 800], weiblich: 700 },
+  { code: 'VITAA', art: 'empfehlung', quelle: 'DGE/ÖGE 2020', maennlich: [850, 850, 850, 800], weiblich: 700 },
   {
     code: 'VITD',
-    art: 'schaetzwert',
-    stand: '2012',
-    ...gleich(20),
+    art: 'empfehlung',
+    quelle: 'NNR 2023',
+    ...gleich(10),
+    abAlter: { alter: 71, wert: 20 },
     keineLuecke: true,
-    hinweis: 'Kommt vor allem von der Sonne: Der Wert gilt nur ohne eigene Bildung in der Haut, über Essen kommen laut DGE meist 2–4 µg.',
+    hinweis: 'Kommt vor allem von der Sonne. Über Essen allein ist der Wert schwer zu erreichen.',
   },
-  { code: 'VITE', art: 'schaetzwert', stand: '2025', ...gleich(8) },
-  { code: 'VITK', art: 'schaetzwert', stand: '2000', maennlich: [70, 70, 80, 80], weiblich: [60, 60, 65, 65] },
-  { code: 'VITC', art: 'empfehlung', stand: '2015', maennlich: 110, weiblich: 95 },
-  { code: 'THIA', art: 'empfehlung', stand: '2015', maennlich: [1.3, 1.2, 1.2, 1.1], weiblich: 1.0 },
-  { code: 'RIBF', art: 'empfehlung', stand: '2015', maennlich: [1.4, 1.4, 1.3, 1.3], weiblich: [1.1, 1.1, 1.0, 1.0] },
-  { code: 'NIAEQ', art: 'empfehlung', stand: '2015', maennlich: [16, 15, 15, 14], weiblich: [13, 12, 11, 11] },
-  { code: 'PANTAC', art: 'schaetzwert', stand: '2021', ...gleich(5) },
-  { code: 'VITB6', art: 'empfehlung', stand: '2019', maennlich: 1600, weiblich: 1400 },
-  { code: 'BIOT', art: 'schaetzwert', stand: '2020', ...gleich(40) },
-  { code: 'FOL', art: 'empfehlung', stand: '2015', ...gleich(300) },
-  { code: 'VITB12', art: 'schaetzwert', stand: '2018', ...gleich(4) },
+  { code: 'VITE', art: 'schaetzwert', quelle: 'DGE/ÖGE 2025', ...gleich(8) },
+  { code: 'VITK', art: 'schaetzwert', quelle: 'EFSA 2017', ...gleich(70) },
+  { code: 'VITC', art: 'empfehlung', quelle: 'DGE/ÖGE 2015', maennlich: 110, weiblich: 95 },
+  { code: 'THIA', art: 'empfehlung', quelle: 'EFSA 2016', jeMJ: 0.1 },
+  { code: 'RIBF', art: 'empfehlung', quelle: 'EFSA 2017', ...gleich(1.6) },
+  { code: 'NIAEQ', art: 'empfehlung', quelle: 'DGE/ÖGE 2015', maennlich: [16, 15, 15, 14], weiblich: [13, 12, 11, 11] },
+  { code: 'PANTAC', art: 'schaetzwert', quelle: 'DGE/ÖGE 2021', ...gleich(5) },
+  { code: 'VITB6', art: 'empfehlung', quelle: 'DGE/ÖGE 2019', maennlich: 1600, weiblich: 1400 },
+  { code: 'BIOT', art: 'schaetzwert', quelle: 'DGE/ÖGE 2020', ...gleich(40) },
+  { code: 'FOL', art: 'empfehlung', quelle: 'EFSA 2014, bestätigt NNR 2023', ...gleich(330) },
+  { code: 'VITB12', art: 'schaetzwert', quelle: 'DGE/ÖGE 2018', ...gleich(4) },
 
   // Mineralstoffe und Spurenelemente
-  { code: 'CA', art: 'empfehlung', stand: '2013', ...gleich(1000) },
-  { code: 'MG', art: 'schaetzwert', stand: '2021', maennlich: 350, weiblich: 300 },
-  { code: 'K', art: 'schaetzwert', stand: '2016', ...gleich(4000) },
-  { code: 'NA', art: 'schaetzwert', stand: '2016', ...gleich(1500) },
-  { code: 'CLD', art: 'schaetzwert', stand: '2016', ...gleich(2300) },
-  { code: 'P', art: 'schaetzwert', stand: '2024', ...gleich(550) },
-  { code: 'FE', art: 'empfehlung', stand: '2024', maennlich: 11, weiblich: [16, 16, 14, 14] },
-  { code: 'ZN', art: 'empfehlung', stand: '2019', maennlich: 14, weiblich: 8 },
-  { code: 'ID', art: 'empfehlung', stand: '2025', ...gleich(150) },
-  { code: 'CU', art: 'schaetzwert', stand: '2000', ...gleich(1000), bis: 1500 },
-  { code: 'MN', art: 'schaetzwert', stand: '2000', ...gleich(2000), bis: 5000 },
+  { code: 'CA', art: 'empfehlung', quelle: 'EFSA 2015', ...gleich([1000, 950, 950, 950]) },
+  { code: 'MG', art: 'schaetzwert', quelle: 'DGE/ÖGE 2021', maennlich: 350, weiblich: 300 },
+  { code: 'K', art: 'schaetzwert', quelle: 'EFSA 2016, bestätigt NNR 2023', ...gleich(3500) },
+  { code: 'CLD', art: 'schaetzwert', quelle: 'EFSA 2019', ...gleich(3100), keineLuecke: true, hinweis: 'Kommt fast nur aus Salz, das muss man nicht gezielt essen.' },
+  { code: 'P', art: 'schaetzwert', quelle: 'DGE/ÖGE 2024', ...gleich(550) },
+  { code: 'FE', art: 'empfehlung', quelle: 'DGE/ÖGE 2024', maennlich: 11, weiblich: [16, 16, 14, 14] },
+  { code: 'ZN', art: 'empfehlung', quelle: 'DGE/ÖGE 2019', maennlich: 14, weiblich: 8 },
+  { code: 'ID', art: 'empfehlung', quelle: 'DGE/ÖGE 2025', ...gleich(150) },
+  { code: 'CU', art: 'schaetzwert', quelle: 'EFSA 2015', maennlich: 1600, weiblich: 1300 },
+  { code: 'MN', art: 'schaetzwert', quelle: 'EFSA 2013', ...gleich(3000) },
   {
     code: 'FD',
     art: 'schaetzwert',
-    stand: '2024',
+    quelle: 'DGE/ÖGE 2024',
     maennlich: 3500,
     weiblich: 3000,
     keineLuecke: true,
     hinweis: 'Gilt für die gesamte Zufuhr: Fluorid kommt auch aus Trinkwasser und Zahnpasta.',
   },
-  { code: 'CR', art: 'schaetzwert', stand: '2000', ...gleich(30), bis: 100 },
-  { code: 'MO', art: 'schaetzwert', stand: '2000', ...gleich(50), bis: 100 },
+  { code: 'MO', art: 'schaetzwert', quelle: 'EFSA 2013', ...gleich(65) },
 
-  // Ballaststoffe
-  { code: 'FIBT', art: 'richtwert', stand: '2021', ...gleich(30) },
+  // Makros und Ballaststoffe
+  { code: 'FIBT', art: 'richtwert', quelle: 'DGE/ÖGE 2021', ...gleich(30) },
+  {
+    code: 'WATER',
+    art: 'schaetzwert',
+    quelle: 'EFSA 2010, bestätigt NNR 2023',
+    maennlich: 2500,
+    weiblich: 2000,
+    keineLuecke: true,
+    hinweis: 'Zählt alles Getrunkene und das Wasser im Essen, soweit es eingetragen ist.',
+  },
 ];
 
 export type HoechstArt = 'hoechstwert' | 'sichere-menge';
@@ -108,12 +121,13 @@ export interface Hoechstwert {
   code: string;
   wert: number;
   art: HoechstArt;
+  quelle: string;
   hinweis?: string;
 }
 
 /**
- * Höchstwerte für Erwachsene von der EFSA. „Sichere Menge“: Für diesen Stoff gibt
- * es keinen echten Höchstwert, aber eine Menge, bei der Fachleute keine Nachteile erwarten.
+ * Höchstwerte für Erwachsene. „Sichere Menge“: Für diesen Stoff gibt es keinen
+ * echten Höchstwert, aber eine Menge, bei der Fachleute keine Nachteile erwarten.
  *
  * Bewusst ohne:
  * - Magnesium: Die 250 mg gelten nur für Nahrungsergänzung, nicht für normales Essen.
@@ -121,23 +135,35 @@ export interface Hoechstwert {
  *   Männer als angemessen nennt (3,5 mg). Das gäbe bei normalem Essen widersprüchliche Hinweise.
  */
 export const HOECHSTWERTE: readonly Hoechstwert[] = [
-  { code: 'RETOL', wert: 3000, art: 'hoechstwert', hinweis: 'Gilt nur für Retinol, nicht für Beta-Carotin.' },
-  { code: 'VITD', wert: 100, art: 'hoechstwert' },
-  { code: 'VITE', wert: 300, art: 'hoechstwert' },
-  { code: 'VITB6', wert: 12000, art: 'hoechstwert' },
-  { code: 'FOLAC', wert: 1000, art: 'hoechstwert', hinweis: 'Gilt nur für zugesetzte Folsäure, nicht für natürliches Folat.' },
-  { code: 'CA', wert: 2500, art: 'hoechstwert' },
-  { code: 'CU', wert: 5000, art: 'hoechstwert' },
-  { code: 'ID', wert: 600, art: 'hoechstwert' },
-  { code: 'MO', wert: 600, art: 'hoechstwert' },
-  { code: 'ZN', wert: 25, art: 'hoechstwert' },
-  { code: 'FE', wert: 40, art: 'sichere-menge' },
-  { code: 'MN', wert: 8000, art: 'sichere-menge' },
+  { code: 'RETOL', wert: 3000, art: 'hoechstwert', quelle: 'EFSA 2024', hinweis: 'Gilt nur für Retinol, nicht für Beta-Carotin.' },
+  { code: 'VITD', wert: 100, art: 'hoechstwert', quelle: 'EFSA 2023' },
+  { code: 'VITE', wert: 300, art: 'hoechstwert', quelle: 'EFSA, Stand 2025' },
+  { code: 'VITB6', wert: 12000, art: 'hoechstwert', quelle: 'EFSA 2023' },
+  { code: 'FOLAC', wert: 1000, art: 'hoechstwert', quelle: 'EFSA 2023', hinweis: 'Gilt nur für zugesetzte Folsäure, nicht für natürliches Folat.' },
+  { code: 'CA', wert: 2500, art: 'hoechstwert', quelle: 'EFSA 2012' },
+  { code: 'CU', wert: 5000, art: 'hoechstwert', quelle: 'EFSA, Stand 2025' },
+  { code: 'ID', wert: 600, art: 'hoechstwert', quelle: 'EFSA, Stand 2025' },
+  { code: 'MO', wert: 600, art: 'hoechstwert', quelle: 'EFSA, Stand 2025' },
+  { code: 'ZN', wert: 25, art: 'hoechstwert', quelle: 'EFSA, Stand 2025' },
+  { code: 'FE', wert: 40, art: 'sichere-menge', quelle: 'EFSA 2024' },
+  { code: 'MN', wert: 8000, art: 'sichere-menge', quelle: 'EFSA 2023' },
+  { code: 'NA', wert: 2000, art: 'hoechstwert', quelle: 'EFSA 2019, WHO' },
 ];
 
-/** Stand und Herkunft der Grenzen, die im Bauauftrag stehen. */
-export const SALZ_HOECHST_G = 6; // DGE-Orientierungswert (Stellungnahme 2016)
-export const GESAETTIGT_HOECHST_ANTEIL = 0.1; // DGE-Fettleitlinie 2015
-export const ZUCKER_HOECHST_ANTEIL = 0.1; // Lukas, 03.11.2026: Zucker gesamt, ob frei oder aus Obst. Strenger als die DGE (freier Zucker, DAG/DDG/DGE 2018).
-export const LINOLSAEURE_ANTEIL = 0.025; // DGE, Stand 2000
-export const ALPHA_LINOLENSAEURE_ANTEIL = 0.005; // DGE, Schätzwert, Stand 2000
+/** Sätze zu Nährstoffen, für die es bewusst kein Ziel gibt. */
+export const HINWEISE_OHNE_ZIEL: Readonly<Record<string, string>> = {
+  ALC: 'Keine Menge gilt als sicher (DGE 2024). Deshalb gibt es hier kein Ziel.',
+  CR: 'Kein Ziel: Es ist nicht belegt, dass der Körper Chrom braucht (EFSA 2014, NNR 2023).',
+  'F20:5CN3': 'EPA und DHA zusammen: etwa 250 mg am Tag (EFSA 2010).',
+  'F22:6CN3': 'EPA und DHA zusammen: etwa 250 mg am Tag (EFSA 2010).',
+};
+
+// Grenzen und Anteile an der Energie
+export const SALZ_HOECHST_G = 5; // EFSA 2019 und WHO: 2 g Natrium am Tag, das sind 5 g Salz (DGE 2016 nennt noch 6 g)
+export const GESAETTIGT_HOECHST_ANTEIL = 0.1; // WHO 2023, NNR 2023
+export const ZUCKER_HOECHST_ANTEIL = 0.1; // Lukas, 03.11.2026: Zucker gesamt, ob frei oder aus Obst. Strenger als WHO und NNR, deren Grenze nur für freien Zucker gilt.
+export const EINFACH_UNGESAETTIGT_ANTEIL = { von: 0.1, bis: 0.2 }; // NNR 2023
+export const MEHRFACH_UNGESAETTIGT_ANTEIL = { von: 0.05, bis: 0.1 }; // NNR 2023
+export const OMEGA3_ANTEIL = 0.01; // NNR 2023: mindestens 1 %
+export const LINOLSAEURE_ANTEIL = 0.025; // NNR 2023: LA und ALA zusammen mindestens 3 %, davon ALA mindestens 0,5 %
+export const ALPHA_LINOLENSAEURE_ANTEIL = 0.005; // NNR 2023

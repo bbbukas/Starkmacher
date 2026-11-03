@@ -34,7 +34,7 @@ Oberfläche ──window.starkmacher──▶ preload ──IPC──▶ main/ip
                                                                                               └ SqliteQuelle (main/daten/sqlite.ts)
 ```
 
-- **Rechenlogik** in `src/shared` (ohne Abhängigkeit vom Mac): `bedarf.ts` (Grundumsatz, Tempo, Untergrenze, Makros, Ziele), `referenzwerte.ts` (alle Werte mit Quelle und Stand, in der Einheit des BLS), `naehrstoffe.ts` (die 138 Nährstoffe in 9 Gruppen; **Selen führt der BLS nicht**), `profil.ts` (Profil, Prüfen der Eingaben), `format.ts` (deutsches Format, gerundete Anzeige).
+- **Rechenlogik** in `src/shared` (ohne Abhängigkeit vom Mac): `bedarf.ts` (Grundumsatz, Tempo, Untergrenze, Makros, Ziele), `referenzwerte.ts` (alle Werte mit Quelle und Stand, in der Einheit des BLS; die Regel steht oben in der Datei), `naehrstoffe.ts` (die 138 Nährstoffe in 9 Gruppen; **Selen führt der BLS nicht**), `profil.ts` (Profil, Prüfen der Eingaben), `format.ts` (deutsches Format, gerundete Anzeige).
 - **Daten:** `starkmacher.sqlite` und `fotos/` in `~/Library/Application Support/Starkmacher/`, eingebautes `node:sqlite`, Aufbau über `MIGRATIONEN` in `sqlite.ts` (nur anhängen). Alles hängt am Profil `PROFIL_ID`. Eine kaputte Datei wird nie überschrieben (`BESCHAEDIGT`), beim Wiederherstellen daneben aufgehoben. Oberfläche: `daten/DatenKontext.tsx`, Änderungen sofort sichtbar, nach 800 ms gespeichert.
 - **Sicherungen** (`main/sicherung.ts`): ein Ordner je Sicherung mit Datenbank (`VACUUM INTO`) und Fotos, bei jedem Start und auf Knopfdruck, die 30 neuesten bleiben, nur eigene Ordner werden aufgeräumt. Fotos aus der vorigen Sicherung werden verknüpft, wo das Laufwerk es kann. Ordner in iCloud werden abgelehnt (`icloudOrdner()` in `main/index.ts`).
 - **Einstellungen:** Der Sicherungsordner liegt in `einstellungen.json` (betrifft nur diesen Mac), Stückware und ausgeblendete Nährstoffe im Profil (kommen beim Wiederherstellen mit).
@@ -42,10 +42,12 @@ Oberfläche ──window.starkmacher──▶ preload ──IPC──▶ main/ip
 
 ### Entscheidungen, die man im Code wiederfindet
 
-- Eiweiß: 0,8 g/kg, ab 65 Jahren 1,0 g/kg, beim Abnehmen und Muskelaufbau 1,6 g/kg; gerechnet mit dem echten Gewicht, höchstens mit dem bei BMI 25.
-- Zucker gesamt höchstens 10 % der Energie (Lukas: frei oder aus Obst ist einerlei). Strenger als die DGE.
-- Vitamin D und Fluorid haben `keineLuecke`: angezeigt, aber nie als Lücke gemeldet.
-- Höchstwerte von der EFSA; bewusst keiner für Magnesium (gilt nur für Nahrungsergänzung) und Fluorid (widerspräche dem DGE-Wert für Männer).
+- **Regel (Lukas, 03.11.2026): der heutige Stand der Wissenschaft, in jeder Information.** Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche Herleitung von DGE/ÖGE, EFSA, Nordischen Empfehlungen (NNR 2023) oder WHO, mit Quelle und Stand in `referenzwerte.ts`; übernimmt eine Stelle nur den Wert einer anderen, zählt das Original. Zuletzt geprüft am 03.11.2026. Neue Werte immer gegen diese Regel prüfen.
+- Eiweiß beim Halten: 15 % der Energie, mindestens 0,83 g/kg; ab 65 Jahren 18 % der Energie, 1,2–1,5 g/kg (NNR 2023). Beim Abnehmen und Muskelaufbau 1,6 g/kg. Gerechnet mit dem echten Gewicht, höchstens mit dem bei BMI 25.
+- Muskelaufbau: +5 % oder +15 % auf den Verbrauch (Helms 2023). Abnehmen: −275 oder −550 kcal.
+- Zucker gesamt höchstens 10 % der Energie (Lukas: frei oder aus Obst ist einerlei). Strenger als WHO und NNR.
+- Vitamin D, Fluorid, Chlorid und Wasser haben `keineLuecke`: angezeigt, aber nie als Lücke gemeldet. Chrom hat kein Ziel (EFSA 2014, NNR 2023).
+- Höchstwerte von der EFSA, Salz 5 g (EFSA 2019, WHO); bewusst keiner für Magnesium (gilt nur für Nahrungsergänzung) und Fluorid (widerspräche dem DGE-Wert für Männer).
 
 ## Befehle
 

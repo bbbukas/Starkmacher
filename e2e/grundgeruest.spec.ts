@@ -107,10 +107,12 @@ test('Mein Bedarf: rechnet mit, sagt Änderungen an, hält die Untergrenze ein',
     await expect(vitamine).toHaveAttribute('open', '');
     await expect(vitamine.locator('.ziel-zeile', { hasText: 'Vitamin C' })).toContainText('110 mg');
     await expect(vitamine.locator('.ziel-zeile', { hasText: 'Kommt vor allem von der Sonne' })).toContainText('Vitamin D');
-    await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Kupfer' })).toContainText('1–1,5 mg');
-    await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Salz' })).toContainText('höchstens 6 g');
+    await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Kupfer' })).toContainText('1,6 mg');
+    await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: /^SalzH/ })).toContainText('höchstens 5 g');
     await seite.locator('details.g-aminosaeuren summary').click();
     await expect(seite.locator('details.g-aminosaeuren .ziel-zeile', { hasText: 'Lysin' })).toContainText('ohne Ziel');
+    await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Chrom' })).toContainText('Es ist nicht belegt');
+    await expect(seite.locator('details.g-vitamine .ziel-zeile', { hasText: 'Vitamin C' }).locator('abbr')).toHaveAttribute('title', 'Empfehlung. Quelle: DGE/ÖGE 2015');
 
     // Eigene Werte unter der Untergrenze werden freundlich angehoben
     await seite.getByRole('radio', { name: /Eigene Werte/ }).check({ force: true });

@@ -4,7 +4,7 @@ import { SICHERUNGEN_BEHALTEN, type Antwort, type ProgrammInfo, type SicherungsE
 import { zahlText } from '@shared/format';
 import { GRUPPEN, NAEHRSTOFFE, naehrstoffeDerGruppe, type Gruppe } from '@shared/naehrstoffe';
 import type { Stueckware } from '@shared/profil';
-import { QUELLE_DGE, QUELLE_EFSA } from '@shared/referenzwerte';
+import { QUELLEN } from '@shared/referenzwerte';
 import { api } from '../api';
 import { useDaten } from '../daten/DatenKontext';
 import { Dialog, Rueckfrage } from '../komponenten/Dialog';
@@ -183,19 +183,24 @@ export function EinstellungenSeite() {
             <b>Lebensmittel:</b> Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. DOI 10.25826/Data20251217-134202-0. Lizenz CC BY 4.0.
           </li>
           <li>
-            <b>Referenzwerte:</b> {QUELLE_DGE.name}, {QUELLE_DGE.fassung}, {QUELLE_DGE.adresse}.
+            <b>Regel für alle Zielwerte:</b> Für jeden Nährstoff gilt die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO. Geprüft am 03.11.2026. Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen.
+          </li>
+          {QUELLEN.map((q) => (
+            <li key={q.kurz}>
+              <b>{q.kurz}:</b> {q.titel}, {q.adresse}.
+            </li>
+          ))}
+          <li>
+            <b>Grundumsatz und Aktivität:</b> Deutsche Gesellschaft für Ernährung, Fragen und Antworten zur Energiezufuhr (2015). Müller-Formel.
           </li>
           <li>
-            <b>Grundumsatz und Aktivität:</b> Deutsche Gesellschaft für Ernährung, Fragen und Antworten zur Energiezufuhr (2015).
+            <b>Eiweiß:</b> Nordic Nutrition Recommendations 2023. Beim Abnehmen und Muskelaufbau: König D et al., Proteinzufuhr im Sport, Ernährungs Umschau 2020; Morton RW et al., Br J Sports Med 2018; Tagawa R et al., Nutr Rev 2021; Enhanced protein intake in adults with overweight/obesity, Clin Nutr ESPEN 2024.
           </li>
           <li>
-            <b>Eiweiß beim Abnehmen und Muskelaufbau:</b> König D et al.: Proteinzufuhr im Sport. Position der AG Sporternährung der DGE. Ernährungs Umschau 2020; 67(7): 132–9.
+            <b>Tempo:</b> Hall KD et al., Lancet 2011; Thomas DM et al., Int J Obes 2013; S3-Leitlinie Adipositas 2024; Helms ER et al., Sports Med Open 2023; Slater GJ et al., Front Nutr 2019.
           </li>
           <li>
-            <b>Höchstwerte:</b> {QUELLE_EFSA.name}, {QUELLE_EFSA.fassung}, {QUELLE_EFSA.adresse}.
-          </li>
-          <li>
-            <b>Zucker:</b> Die Grenze von 10 % der Energie gilt hier für allen Zucker. Das ist strenger als die Fachgesellschaften (DAG, DDG, DGE 2018), deren Grenze nur für freien Zucker gilt.
+            <b>Zucker:</b> Die Grenze von 10 % der Energie gilt hier für allen Zucker (deine Regel). Das ist strenger als WHO und Nordische Empfehlungen, deren Grenze nur für freien Zucker gilt.
           </li>
           <li>
             <b>Schriften und Symbole:</b> Fraunces und Nunito (SIL Open Font License), Lucide (ISC-Lizenz).

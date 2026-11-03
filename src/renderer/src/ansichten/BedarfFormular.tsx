@@ -2,7 +2,7 @@
  * Die Eingaben für „Mein Bedarf“. Dieselben Abschnitte erscheinen beim ersten Start
  * Schritt für Schritt und später auf der Seite „Mein Bedarf“ untereinander.
  */
-import { AKTIVITAETEN, TEMPO_KCAL, type Bedarf } from '@shared/bedarf';
+import { ABNEHMEN_KCAL, AKTIVITAETEN, AUFBAU_ANTEIL, type Bedarf } from '@shared/bedarf';
 import { datumText, zahlText } from '@shared/format';
 import { geburtsjahrErlaubt, gewichtErlaubt, groesseErlaubt, kcalErlaubt, makroErlaubt, neuestesGewicht, type Geschlecht, type Tempo, type Ziel } from '@shared/profil';
 import { useDaten } from '../daten/DatenKontext';
@@ -111,8 +111,8 @@ export function ZielWahl() {
             name="tempo"
             beschriftung="Tempo"
             optionen={[
-              { id: 'sanft', titel: 'Sanft', text: tempoZiel === 'abnehmen' ? `Etwa 0,25 kg pro Woche (${vorzeichen(TEMPO_KCAL.abnehmen.sanft)})` : vorzeichen(TEMPO_KCAL.aufbauen.sanft) },
-              { id: 'mittel', titel: 'Mittel', text: tempoZiel === 'abnehmen' ? `Etwa 0,5 kg pro Woche (${vorzeichen(TEMPO_KCAL.abnehmen.mittel)})` : vorzeichen(TEMPO_KCAL.aufbauen.mittel) },
+              { id: 'sanft', titel: 'Sanft', text: tempoZiel === 'abnehmen' ? `Etwa 0,25 kg pro Woche (${vorzeichen(ABNEHMEN_KCAL.sanft)})` : `Etwa ${zahlText(AUFBAU_ANTEIL.sanft * 100)} % über deinem Verbrauch` },
+              { id: 'mittel', titel: 'Mittel', text: tempoZiel === 'abnehmen' ? `Etwa 0,5 kg pro Woche (${vorzeichen(ABNEHMEN_KCAL.mittel)})` : `Etwa ${zahlText(AUFBAU_ANTEIL.mittel * 100)} % über deinem Verbrauch` },
             ]}
             wert={profil.tempo}
             onWert={(tempo) => profilAendern({ tempo })}
@@ -192,7 +192,7 @@ export function BedarfErgebnis({ bedarf }: { bedarf: Bedarf }) {
           <small>kcal am Tag</small>
         </Teller>
         <div className="makros">
-          <MakroZahl klasse="g-aminosaeuren" titel="Eiweiß" gramm={bedarf.eiweissG} text={eigen ? undefined : `${zahlText(bedarf.eiweissFaktor, 1)} g je kg`} />
+          <MakroZahl klasse="g-aminosaeuren" titel="Eiweiß" gramm={bedarf.eiweissG} text={eigen ? undefined : bedarf.eiweissGrund} />
           <MakroZahl klasse="g-fettsaeuren" titel="Fett" gramm={bedarf.fettG} text={eigen ? undefined : `${zahlText(bedarf.fettAnteil * 100)} % der Energie`} />
           <MakroZahl klasse="g-kohlenhydrate" titel="Kohlenhydrate" gramm={bedarf.kohlenhydrateG} text={eigen ? undefined : 'der Rest'} />
         </div>
@@ -205,7 +205,7 @@ export function BedarfErgebnis({ bedarf }: { bedarf: Bedarf }) {
             : `Damit dein Körper genug bekommt, bleibt dein Ziel bei ${zahlText(bedarf.kcal)} kcal statt ${zahlText(bedarf.wunschKcal)} kcal. Es geht dann etwas langsamer, dafür gut versorgt.`}
         </p>
       )}
-      {ziel === 'aufbauen' && <p className="feld-hilfe">Eiweiß hilft den Muskeln nur zusammen mit Training.</p>}
+      {ziel === 'aufbauen' && <p className="feld-hilfe">Eiweiß hilft den Muskeln nur zusammen mit Training. Ein größeres Kalorienplus bringt vor allem mehr Fett, nicht mehr Muskeln.</p>}
 
       {!eigen && (
         <dl className="rechenweg">

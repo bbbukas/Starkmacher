@@ -1,5 +1,4 @@
 import { fehlendeAngaben } from '@shared/bedarf';
-import { QUELLE_DGE } from '@shared/referenzwerte';
 import { useDaten } from '../daten/DatenKontext';
 import { ArtLegende, ZieleListe } from '../komponenten/ZieleListe';
 import { AktivitaetWahl, BedarfErgebnis, HINWEIS_GESUND, UeberDich, ZielWahl } from './BedarfFormular';
@@ -40,7 +39,7 @@ export function MeinBedarf() {
               <ZieleListe bedarf={bedarf} ausgeblendet={stand.profil.ausgeblendet} />
               <ArtLegende />
               <p className="quelle">
-                Grundlage: {QUELLE_DGE.name}, {QUELLE_DGE.fassung}. Die Quellen stehen in den Einstellungen unter „Über Starkmacher“.
+                Für jeden Nährstoff gilt die jüngste wissenschaftliche Herleitung von DGE/ÖGE, EFSA, den Nordischen Empfehlungen oder der WHO. Fährst du mit der Maus auf den Buchstaben, steht dort die Quelle. Alle Quellen stehen in den Einstellungen unter „Über Starkmacher“.
               </p>
             </>
           )}
