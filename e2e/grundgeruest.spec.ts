@@ -114,7 +114,7 @@ test('Mein Bedarf: rechnet mit, sagt Änderungen an, hält die Untergrenze ein',
 
     // Eigene Werte unter der Untergrenze werden freundlich angehoben
     await seite.getByRole('radio', { name: /Eigene Werte/ }).check({ force: true });
-    await seite.getByLabel('Kalorien').fill('900');
+    await seite.getByRole('textbox', { name: 'Kalorien' }).fill('900');
     await expect(seite.getByText(/Du hast 900 kcal eingetragen. Damit dein Körper genug bekommt/)).toBeVisible();
     await expect(kcal).not.toHaveText('900');
     await foto(seite, '8-untergrenze');
