@@ -1,0 +1,24 @@
+# Abhängigkeiten und gebaute Dateien
+node_modules/
+out/
+release/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Meine persönlichen Daten kommen NIE ins Repository (Bauauftrag Abschnitt 0):
+# Datendatei, Fotos, Sicherungen und Importe
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+einstellungen.json
+fotos/
+import/
+sicherungen/
+Sicherungen/
+Starkmacher-Sicherung-*
+
+# Werkzeuge und Mac
+.claude/settings.local.json
+.DS_Store
+*.log
