@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import type { Bedarf, ZielArt } from '@shared/bedarf';
 import { mengeText, spanneText, zahlText, zielText } from '@shared/format';
 import { GRUPPEN, naehrstoffeDerGruppe, type GruppenId } from '@shared/naehrstoffe';
-import { EPA_DHA_MINIMUM_MG, EPA_DHA_OPTIMUM_MG, HINWEISE_OHNE_ZIEL, LEUCIN_JE_MAHLZEIT_G, OMEGA6_ZU_OMEGA3 } from '@shared/referenzwerte';
+import { EPA_DHA_MINIMUM_MG, EPA_DHA_OPTIMUM_MG, HINWEISE_OHNE_ZIEL } from '@shared/referenzwerte';
 
 const ART: Readonly<Record<ZielArt, { kurz: string; titel: string }>> = {
   empfehlung: { kurz: 'E', titel: 'Empfehlung' },
@@ -27,6 +27,7 @@ interface ZusatzZiel {
   quelle?: string;
   wert?: string;
   optimum?: string;
+  optimumQuelle?: string;
   hinweis: string;
 }
 
@@ -49,30 +50,19 @@ function zusatzZiele(bedarf: Bedarf): Partial<Record<GruppenId, readonly ZusatzZ
         quelle: 'EFSA 2010',
         wert: `${zahlText(EPA_DHA_MINIMUM_MG)} mg`,
         optimum: `${zahlText(EPA_DHA_OPTIMUM_MG.von)}–${zahlText(EPA_DHA_OPTIMUM_MG.bis)} mg`,
-        hinweis: 'Aus Fisch oder Algenöl. Bei Kapseln über 1 g am Tag gab es in Studien mehr Vorhofflimmern.',
-      },
-      {
-        name: 'Omega-6 zu Omega-3',
-        optimum: `höchstens ${OMEGA6_ZU_OMEGA3.hoechst} : 1, besser ${OMEGA6_ZU_OMEGA3.ideal} : 1`,
-        hinweis: 'Die Fachstellen nennen hierfür keinen Wert, weil die Beleglage nicht ausreicht.',
-      },
-    ],
-    aminosaeuren: [
-      {
-        name: 'Leucin je Mahlzeit',
-        optimum: `etwa ${zahlText(LEUCIN_JE_MAHLZEIT_G, 1)} g`,
-        hinweis: 'Ob es diese Schwelle wirklich gibt, ist in der Forschung umstritten.',
+        optimumQuelle: EPA_DHA_OPTIMUM_MG.quelle,
+        hinweis: 'Am besten aus Fisch. Kapseln mit 1 g senkten bei Gesunden schwere Herzereignisse nicht sicher (VITAL 2019), über 1 g gab es deutlich mehr Vorhofflimmern (Gencer 2021).',
       },
     ],
   };
 }
 
-function Stufen({ minimum, optimum }: { minimum: string | null; optimum?: string }) {
+function Stufen({ minimum, optimum, optimumQuelle }: { minimum: string | null; optimum?: string; optimumQuelle?: string }) {
   if (!optimum) return <>{minimum ?? <span className="leise">ohne Ziel</span>}</>;
   return (
     <>
       {minimum && <>Minimum {minimum}</>}
-      <span className="optimum" title="Optimum. Quelle: deine Vorgabe">
+      <span className="optimum" title={`Optimum. Quelle: ${optimumQuelle}`}>
         Optimum {optimum}
       </span>
     </>
@@ -106,7 +96,7 @@ export function ZieleListe({ bedarf, ausgeblendet }: { bedarf: Bedarf; ausgeblen
                     {z.art && <ArtMarke art={z.art} quelle={z.quelle} />}
                   </span>
                   <span className="wert">
-                    <Stufen minimum={z.wert ?? null} optimum={z.optimum} />
+                    <Stufen minimum={z.wert ?? null} optimum={z.optimum} optimumQuelle={z.optimumQuelle} />
                   </span>
                   <p className="ziel-hinweis">{z.hinweis}</p>
                 </div>
@@ -121,7 +111,7 @@ export function ZieleListe({ bedarf, ausgeblendet }: { bedarf: Bedarf; ausgeblen
                       {ziel && <ArtMarke art={ziel.art} quelle={ziel.quelle} />}
                     </span>
                     <span className="wert">
-                      <Stufen minimum={text} optimum={ziel?.optimum && spanneText(ziel.optimum.von, ziel.optimum.bis, n)} />
+                      <Stufen minimum={text} optimum={ziel?.optimum && spanneText(ziel.optimum.von, ziel.optimum.bis, n)} optimumQuelle={ziel?.optimum?.quelle} />
                       {ziel?.von !== undefined && ziel.hoechst !== undefined && (
                         <small>
                           {ziel.hoechstArt === 'sichere-menge' ? 'sichere Menge bis ' : 'höchstens '}
@@ -157,7 +147,7 @@ export function ArtLegende() {
         <ArtMarke art="hoechstwert" /> Höchstwert
       </span>
       <span>
-        <ArtMarke art="eigener-wert" /> Deine Vorgabe
+        <ArtMarke art="eigener-wert" /> Dein eigener Wert
       </span>
     </p>
   );

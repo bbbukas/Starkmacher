@@ -39,7 +39,7 @@ export function MeinBedarf() {
               <ZieleListe bedarf={bedarf} ausgeblendet={stand.profil.ausgeblendet} />
               <ArtLegende />
               <p className="quelle">
-                Das Minimum ist die jüngste wissenschaftliche Herleitung von DGE/ÖGE, EFSA, den Nordischen Empfehlungen oder der WHO. Das Optimum ist deine eigene Vorgabe. Fährst du mit der Maus auf den Buchstaben, steht dort die Quelle. Alle Quellen stehen in den Einstellungen unter „Über Starkmacher“.
+                Das Minimum ist die jüngste wissenschaftliche Herleitung von DGE/ÖGE, EFSA, den Nordischen Empfehlungen oder der WHO. Das Optimum ist der Bereich, für den die Forschung einen Nutzen darüber hinaus zeigt. Bei Vitaminen und Mineralstoffen ist das nicht belegt, deshalb gibt es dort nur das Minimum. Fährst du mit der Maus auf den Buchstaben oder das Optimum, steht dort die Quelle. Alle Quellen stehen in den Einstellungen unter „Über Starkmacher“.
               </p>
             </>
           )}

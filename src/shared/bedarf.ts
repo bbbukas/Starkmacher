@@ -8,6 +8,7 @@ import { neuestesGewicht } from './profil';
 import {
   ALPHA_LINOLENSAEURE_ANTEIL,
   BALLASTSTOFFE_OPTIMUM_G,
+  BALLASTSTOFFE_ZUM_PLANEN_G,
   EINFACH_UNGESAETTIGT_ANTEIL,
   FETT_MINIMUM_ANTEIL,
   FETT_OPTIMUM_ANTEIL,
@@ -54,13 +55,15 @@ export const UNTERGRENZE_KCAL: Readonly<Record<Geschlecht, number>> = { weiblich
  * Eiweiß hat zwei Stufen (Lukas, 04.11.2026).
  * Minimum: 0,83 g je kg (EFSA 2012, NNR 2023), ab 65 Jahren 1,2 g je kg (NNR 2023), beim Abnehmen und
  * Muskelaufbau 1,6 g je kg (DGE-Positionspapier „Proteinzufuhr im Sport“ 2020, Morton 2018).
- * Optimum: 1,2–1,6 g je kg, bei Sport oder Kaloriendefizit 1,6–2,0 g je kg. Geplant wird mit der Mitte des Optimums.
+ * Optimum: 1,2–1,6 g je kg (Phillips 2016), bei Sport oder Kaloriendefizit 1,6–2,0 g je kg
+ * (DGE 2020 und ACSM 2016 nennen 1,2–2,0 g je kg, das Plus an Muskeln flacht ab 1,6 g je kg ab).
+ * Geplant wird mit der Mitte des Optimums.
  */
 const EIWEISS_MINIMUM_G_JE_KG = 0.83;
 const EIWEISS_MINIMUM_AB_65_G_JE_KG = 1.2;
 const EIWEISS_MINIMUM_FUER_ZIELE_G_JE_KG = 1.6;
-export const EIWEISS_OPTIMUM_G_JE_KG = { von: 1.2, bis: 1.6 };
-export const EIWEISS_OPTIMUM_HOCH_G_JE_KG = { von: 1.6, bis: 2.0 };
+export const EIWEISS_OPTIMUM_G_JE_KG = { von: 1.2, bis: 1.6, quelle: 'Phillips 2016' };
+export const EIWEISS_OPTIMUM_HOCH_G_JE_KG = { von: 1.6, bis: 2.0, quelle: 'DGE 2020, ACSM 2016' };
 const FETT_ANTEIL = 0.3;
 const FETT_ANTEIL_HOHE_AKTIVITAET = 0.35;
 
@@ -112,7 +115,7 @@ export function rechengewichtFuerEiweiss(gewichtKg: number, groesseCm: number): 
 const brauchtVielEiweiss = (ziel: Ziel, sport: boolean) => ziel === 'abnehmen' || ziel === 'aufbauen' || sport;
 
 /** Eiweißziel in Gramm: das Minimum, das Optimum und dessen Mitte zum Planen. */
-export function eiweissZiel(ziel: Ziel, sport: boolean, alter: number, rechengewichtKg: number): { minimum: number; von: number; bis: number; gramm: number } {
+export function eiweissZiel(ziel: Ziel, sport: boolean, alter: number, rechengewichtKg: number): { minimum: number; von: number; bis: number; gramm: number; quelle: string } {
   const optimum = brauchtVielEiweiss(ziel, sport) ? EIWEISS_OPTIMUM_HOCH_G_JE_KG : EIWEISS_OPTIMUM_G_JE_KG;
   const fuerZiel = ziel === 'abnehmen' || ziel === 'aufbauen';
   const minimum = fuerZiel ? EIWEISS_MINIMUM_FUER_ZIELE_G_JE_KG : alter >= 65 ? EIWEISS_MINIMUM_AB_65_G_JE_KG : EIWEISS_MINIMUM_G_JE_KG;
@@ -121,6 +124,7 @@ export function eiweissZiel(ziel: Ziel, sport: boolean, alter: number, rechengew
     von: Math.round(rechengewichtKg * optimum.von),
     bis: Math.round(rechengewichtKg * optimum.bis),
     gramm: Math.round((rechengewichtKg * (optimum.von + optimum.bis)) / 2),
+    quelle: optimum.quelle,
   };
 }
 
@@ -148,8 +152,8 @@ export interface NaehrstoffZiel {
   von?: number;
   /** Obere Grenze einer Spanne (einfach und mehrfach ungesättigte Fettsäuren). */
   bis?: number;
-  /** Das Optimum, Lukas' Vorgabe. Gibt es nur bei Eiweiß, Fett und Ballaststoffen. */
-  optimum?: { von: number; bis: number };
+  /** Das Optimum: der Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt. Nur bei Eiweiß, Fett und Ballaststoffen. */
+  optimum?: { von: number; bis: number; quelle: string };
   /** Darüber sollte man auf Dauer nicht liegen. */
   hoechst?: number;
   hoechstArt?: HoechstArt;
@@ -186,7 +190,7 @@ const wertFuer = (wert: number | readonly [number, number, number, number], grup
 
 /** Die Kohlenhydrate füllen auf, was nach Eiweiß, Fett und Ballaststoffen noch frei ist. */
 function kohlenhydrateAlsRest(kcal: number, eiweissG: number, fettG: number): number {
-  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_OPTIMUM_G.von * KCAL_JE_G_BALLASTSTOFFE;
+  const rest = kcal - eiweissG * KCAL_JE_G_EIWEISS - fettG * KCAL_JE_G_FETT - BALLASTSTOFFE_ZUM_PLANEN_G * KCAL_JE_G_BALLASTSTOFFE;
   return Math.max(0, Math.round(rest / KCAL_JE_G_KOHLENHYDRATE));
 }
 
@@ -245,7 +249,7 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
   ziele.PROT625 = {
     code: 'PROT625',
     art: eigen ? 'eigener-wert' : e.ziel === 'halten' && e.alter < 65 ? 'empfehlung' : 'richtwert',
-    ...(eigen ? { von: eiweissG } : { von: eiweiss.minimum, optimum: { von: eiweiss.von, bis: eiweiss.bis } }),
+    ...(eigen ? { von: eiweissG } : { von: eiweiss.minimum, optimum: { von: eiweiss.von, bis: eiweiss.bis, quelle: eiweiss.quelle } }),
     quelle: eigenOder(eiweissQuelle),
     ...(!eigen && brauchtVielEiweiss(e.ziel, e.sport) ? { hinweis: 'Ab 2 g je kg über lange Zeit ist laut DGE ein Schaden an den Nieren nicht auszuschließen.' } : {}),
   };
@@ -254,13 +258,16 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
     art: eigenerOderRicht,
     ...(eigen
       ? { von: fettG }
-      : { von: kcalAlsG(FETT_MINIMUM_ANTEIL, KCAL_JE_G_FETT), optimum: { von: kcalAlsG(FETT_OPTIMUM_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(FETT_OPTIMUM_ANTEIL.bis, KCAL_JE_G_FETT) } }),
+      : {
+          von: kcalAlsG(FETT_MINIMUM_ANTEIL, KCAL_JE_G_FETT),
+          optimum: { von: kcalAlsG(FETT_OPTIMUM_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(FETT_OPTIMUM_ANTEIL.bis, KCAL_JE_G_FETT), quelle: FETT_OPTIMUM_ANTEIL.quelle },
+        }),
     quelle: eigenOder('NNR 2023'),
   };
   ziele.FIBT = {
     ...ziele.FIBT!,
     optimum: BALLASTSTOFFE_OPTIMUM_G,
-    hinweis: 'Gut sind fermentierbare Quellen wie Hafer und Hülsenfrüchte. Langsam steigern und genug trinken (DGE).',
+    hinweis: 'Am besten aus Vollkorn, Hülsenfrüchten, Gemüse und Obst. Über 40 g ist kein zusätzlicher Nutzen belegt. Langsam steigern und genug trinken (DGE).',
   };
   ziele.CHO = {
     code: 'CHO',
@@ -274,7 +281,13 @@ export function bedarfBerechnen(e: BedarfEingabe): Bedarf {
   ziele.FAMS = { code: 'FAMS', art: 'richtwert', von: kcalAlsG(EINFACH_UNGESAETTIGT_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(EINFACH_UNGESAETTIGT_ANTEIL.bis, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
   ziele.FAPU = { code: 'FAPU', art: 'richtwert', von: kcalAlsG(MEHRFACH_UNGESAETTIGT_ANTEIL.von, KCAL_JE_G_FETT), bis: kcalAlsG(MEHRFACH_UNGESAETTIGT_ANTEIL.bis, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
   ziele.FAPUN3 = { code: 'FAPUN3', art: 'richtwert', von: kcalAlsG(OMEGA3_ANTEIL, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
-  ziele['F18:2CN6'] = { code: 'F18:2CN6', art: 'richtwert', von: kcalAlsG(LINOLSAEURE_ANTEIL, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
+  ziele['F18:2CN6'] = {
+    code: 'F18:2CN6',
+    art: 'richtwert',
+    von: kcalAlsG(LINOLSAEURE_ANTEIL, KCAL_JE_G_FETT),
+    quelle: 'NNR 2023',
+    hinweis: 'Für das Verhältnis zu Omega-3 gibt es bewusst kein Ziel: Die Belege reichen nicht (NNR 2023). Omega-6 zu senken, könnte dem Herzen sogar schaden (AHA 2009).',
+  };
   ziele['F18:3CN3'] = { code: 'F18:3CN3', art: 'richtwert', von: kcalAlsG(ALPHA_LINOLENSAEURE_ANTEIL, KCAL_JE_G_FETT), quelle: 'NNR 2023' };
 
   return {

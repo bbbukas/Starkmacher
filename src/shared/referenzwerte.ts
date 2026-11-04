@@ -9,9 +9,12 @@
  * NNR) oder der WHO. Übernimmt eine Stelle nur den Wert einer anderen, zählt das
  * Original. Geprüft am 03.11.2026.
  *
- * Zwei Stufen (Lukas, 04.11.2026): Die Werte nach dieser Regel sind das Minimum. Seine eigenen
- * Vorgaben sind das Optimum: Eiweiß (bedarf.ts), Fett, Ballaststoffe, EPA und DHA, Omega-6 zu Omega-3,
- * Leucin je Mahlzeit (ganz unten). Für alle anderen Nährstoffe gibt es nur das Minimum.
+ * Zwei Stufen (Lukas, 04.11.2026): Die Werte nach dieser Regel sind das Minimum. Das Optimum ist der
+ * Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt, immer mit Quelle: Eiweiß
+ * (bedarf.ts), Fett, Ballaststoffe, EPA und DHA (ganz unten). Für Vitamine und Mineralstoffe ist so ein
+ * Nutzen bei ausreichender Versorgung nicht belegt (USPSTF 2022, DGE-Arbeitsgruppe Sporternährung 2020),
+ * deshalb gibt es dort nur das Minimum. Bewusst kein Ziel: Omega-6 zu Omega-3 (NNR 2023, AHA 2009) und
+ * Leucin je Mahlzeit (Schwelle umstritten, Übersichtsarbeit 2023).
  *
  * Bewusste Ausnahmen von der Regel:
  * - Folat: EFSA 2014 statt DGE 2015, weil der BLS Folat genauso rechnet wie die
@@ -158,12 +161,16 @@ export const HINWEISE_OHNE_ZIEL: Readonly<Record<string, string>> = {
   CR: 'Kein Ziel: Es ist nicht belegt, dass der Körper Chrom braucht (EFSA 2014, NNR 2023).',
 };
 
-// Optimum, Vorgaben von Lukas (04.11.2026). Die Fachstellen sehen es teils anders, das steht jeweils dabei.
-export const FETT_OPTIMUM_ANTEIL = { von: 0.25, bis: 0.35 }; // Anteil an der Energie. Passt zu EFSA (20–35 %) und NNR 2023 (25–40 %).
-export const BALLASTSTOFFE_OPTIMUM_G = { von: 40, bis: 50 }; // Über den Fachstellen: DGE 2021 mindestens 30 g, NNR 2023 25–35 g, WHO 2023 mindestens 25 g.
-export const OMEGA6_ZU_OMEGA3 = { ideal: 3, hoechst: 5 }; // NNR 2023: Für ein Verhältnis reicht die Beleglage nicht aus.
-export const EPA_DHA_OPTIMUM_MG = { von: 1000, bis: 2000 }; // Kapseln über 1 g am Tag: mehr Vorhofflimmern (Gencer 2021).
-export const LEUCIN_JE_MAHLZEIT_G = 2.5; // Die Vorgabe nennt keine Zahl; üblich sind 2–3 g. Ob es diese Schwelle gibt, ist umstritten (Übersichtsarbeit 2023).
+// Optimum: der Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt. Geprüft am 04.11.2026.
+// Fett, Anteil an der Energie: dort, wo sich EFSA (20–35 %) und NNR 2023 (25–40 %) überschneiden.
+export const FETT_OPTIMUM_ANTEIL = { von: 0.25, bis: 0.35, quelle: 'EFSA 2017, NNR 2023' };
+// Größter belegter Nutzen bei 25–29 g, die Kurven deuten mehr an (Reynolds 2019). 35 g sind das höchste gut untersuchte Ziel
+// (Reynolds 2020, bei Diabetes). Über 40 g ist kein zusätzlicher Nutzen belegt, auch wenn 45 g machbar sind (Wastyk 2021, 10 Wochen).
+export const BALLASTSTOFFE_OPTIMUM_G = { von: 30, bis: 40, quelle: 'Reynolds 2019 und 2020' };
+export const BALLASTSTOFFE_ZUM_PLANEN_G = 35;
+// 1 g am Tag: bei 25.871 Gesunden keine sichere Senkung schwerer Herzereignisse, aber weniger Herzinfarkte (VITAL 2019).
+// Über 1 g in Kapseln deutlich mehr Vorhofflimmern (Gencer 2021). Keine Kapsel-Empfehlung für Gesunde (AHA 2017).
+export const EPA_DHA_OPTIMUM_MG = { von: 250, bis: 1000, quelle: 'VITAL 2019, Gencer 2021' };
 
 // Minimum und Grenzen, Anteile an der Energie
 export const FETT_MINIMUM_ANTEIL = 0.25; // NNR 2023

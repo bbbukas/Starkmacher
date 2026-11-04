@@ -111,18 +111,22 @@ test('Mein Bedarf: rechnet mit, sagt Änderungen an, hält die Untergrenze ein',
     await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: /^SalzH/ })).toContainText('höchstens 5 g');
     await seite.locator('details.g-aminosaeuren summary').click();
     await expect(seite.locator('details.g-aminosaeuren .ziel-zeile', { hasText: 'Lysin' })).toContainText('ohne Ziel');
+    await expect(seite.locator('details.g-aminosaeuren .ziel-zeile', { hasText: /^Leucin/ })).toContainText('ohne Ziel');
     await expect(seite.locator('details.g-mineralstoffe .ziel-zeile', { hasText: 'Chrom' })).toContainText('Es ist nicht belegt');
     await seite.locator('details.g-ballaststoffe summary').click();
     const ballaststoffe = seite.locator('details.g-ballaststoffe .ziel-zeile', { hasText: 'Ballaststoffe gesamt' });
     await expect(ballaststoffe).toContainText('Minimum 30 g');
-    await expect(ballaststoffe).toContainText('Optimum 40–50 g');
+    await expect(ballaststoffe).toContainText('Optimum 30–40 g');
+    await expect(ballaststoffe.locator('.optimum')).toHaveAttribute('title', 'Optimum. Quelle: Reynolds 2019 und 2020');
     await seite.locator('details.g-kohlenhydrate summary').click();
     await expect(seite.locator('details.g-kohlenhydrate .ziel-zeile', { hasText: 'Freier Zucker' })).toContainText('höchstens');
     await expect(seite.locator('details.g-kohlenhydrate .ziel-zeile', { hasText: /^Zucker gesamt/ })).toContainText('ohne Ziel');
     await seite.locator('details.g-fettsaeuren summary').click();
-    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'EPA und DHA zusammen' })).toContainText('Optimum 1.000–2.000 mg');
+    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'EPA und DHA zusammen' })).toContainText('Optimum 250–1.000 mg');
     await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'EPA und DHA zusammen' })).toContainText('Minimum 250 mg');
-    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'Omega-6 zu Omega-3' })).toContainText('höchstens 5 : 1');
+    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'Verhältnis zu Omega-3' })).toHaveCount(1);
+    await expect(seite.locator('details.g-fettsaeuren .ziel-zeile', { hasText: 'Omega-6 zu Omega-3' })).toHaveCount(0);
+    await expect(seite.getByText('deine eigene Vorgabe')).toHaveCount(0);
     await expect(seite.locator('details.g-vitamine .ziel-zeile', { hasText: 'Vitamin C' }).locator('abbr')).toHaveAttribute('title', 'Empfehlung. Quelle: DGE/ÖGE 2015');
 
     // Eigene Werte unter der Untergrenze werden freundlich angehoben

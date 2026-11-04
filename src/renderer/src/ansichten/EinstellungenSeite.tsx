@@ -183,7 +183,7 @@ export function EinstellungenSeite() {
             <b>Lebensmittel:</b> Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. DOI 10.25826/Data20251217-134202-0. Lizenz CC BY 4.0.
           </li>
           <li>
-            <b>Zwei Stufen:</b> Das Minimum ist für jeden Nährstoff die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO, geprüft am 03.11.2026. Das Optimum ist deine eigene Vorgabe (Eiweiß, Fett, Ballaststoffe, EPA und DHA, Omega-6 zu Omega-3, Leucin). Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen.
+            <b>Zwei Stufen:</b> Das Minimum ist für jeden Nährstoff die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO, geprüft am 03.11.2026. Das Optimum ist der Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt, geprüft am 04.11.2026 (Eiweiß, Fett, Ballaststoffe, EPA und DHA). Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen und am Optimum.
           </li>
           {QUELLEN.map((q) => (
             <li key={q.kurz}>
@@ -195,6 +195,21 @@ export function EinstellungenSeite() {
           </li>
           <li>
             <b>Eiweiß, Minimum:</b> EFSA 2012; Nordic Nutrition Recommendations 2023; König D et al., Proteinzufuhr im Sport, Ernährungs Umschau 2020; Morton RW et al., Br J Sports Med 2018; Tagawa R et al., Nutr Rev 2021; Enhanced protein intake in adults with overweight/obesity, Clin Nutr ESPEN 2024.
+          </li>
+          <li>
+            <b>Eiweiß, Optimum:</b> Phillips SM et al., Appl Physiol Nutr Metab 2016; König D et al., Proteinzufuhr im Sport, Ernährungs Umschau 2020; Academy of Nutrition and Dietetics, Dietitians of Canada und American College of Sports Medicine, Med Sci Sports Exerc 2016.
+          </li>
+          <li>
+            <b>Ballaststoffe, Optimum:</b> Reynolds A et al., Lancet 2019; Reynolds AN et al., PLoS Med 2020.
+          </li>
+          <li>
+            <b>EPA und DHA, Optimum:</b> Manson JE et al. (VITAL), N Engl J Med 2019; Gencer B et al., Circulation 2021; Siscovick DS et al. (American Heart Association), Circulation 2017.
+          </li>
+          <li>
+            <b>Kein Ziel für Omega-6 zu Omega-3:</b> Nordic Nutrition Recommendations 2023; Harris WS et al. (American Heart Association), Circulation 2009.
+          </li>
+          <li>
+            <b>Kein Optimum für Vitamine und Mineralstoffe:</b> US Preventive Services Task Force, JAMA 2022; Arbeitsgruppe Sporternährung der DGE, Dtsch Z Sportmed 2020.
           </li>
           <li>
             <b>Tempo:</b> Hall KD et al., Lancet 2011; Thomas DM et al., Int J Obes 2013; S3-Leitlinie Adipositas 2024; Helms ER et al., Sports Med Open 2023; Slater GJ et al., Front Nutr 2019.
