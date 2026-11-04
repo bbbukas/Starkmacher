@@ -24,10 +24,11 @@ function Treffer({ lm, onWahl }: { lm: LebensmittelKurz; onWahl(id: string): voi
  * Suchen und auswählen, in einem Fenster. Mit `mitRezepten` kommen die eigenen Rezepte dazu, ihre Kalorien gelten je Portion.
  * `zuletzt`: was ohne Suchwort oben steht.
  */
-export function LebensmittelWahl({ onWahl, mitRezepten, zuletzt = [], zuletztTitel = 'Zuletzt gegessen' }: { onWahl(id: string): void; mitRezepten?: boolean; zuletzt?: readonly LebensmittelKurz[]; zuletztTitel?: string }) {
+export function LebensmittelWahl({ onWahl, mitRezepten, mitTellern, zuletzt = [], zuletztTitel = 'Zuletzt gegessen' }: { onWahl(id: string): void; mitRezepten?: boolean; mitTellern?: boolean; zuletzt?: readonly LebensmittelKurz[]; zuletztTitel?: string }) {
   const [text, setText] = useState('');
   const [treffer, setTreffer] = useState<LebensmittelKurz[]>([]);
   const [rezepte, setRezepte] = useState<LebensmittelKurz[]>([]);
+  const [teller, setTeller] = useState<LebensmittelKurz[]>([]);
 
   useEffect(() => {
     if (!mitRezepten) return;
@@ -43,6 +44,21 @@ export function LebensmittelWahl({ onWahl, mitRezepten, zuletzt = [], zuletztTit
       clearTimeout(uhr);
     };
   }, [text, mitRezepten]);
+
+  useEffect(() => {
+    if (!mitTellern) return;
+    let abgebrochen = false;
+    const uhr = setTimeout(() => {
+      void api.teller.liste(text).then((a) => {
+        if (abgebrochen || !a.ok) return;
+        setTeller(a.wert.slice(0, 12).map((t) => ({ id: t.id, herkunft: 'teller', name: t.name, marke: t.inhalt, gruppe: null, kcal: t.kcal, eiweiss: t.eiweiss, fett: null, kohlenhydrate: null })));
+      });
+    }, 120);
+    return () => {
+      abgebrochen = true;
+      clearTimeout(uhr);
+    };
+  }, [text, mitTellern]);
 
   useEffect(() => {
     if (text.trim() === '') {
@@ -64,12 +80,13 @@ export function LebensmittelWahl({ onWahl, mitRezepten, zuletzt = [], zuletztTit
   const sucht = text.trim() !== '';
   const zuletztIds = new Set(zuletzt.map((k) => k.id));
   const rezepteSichtbar = sucht ? rezepte : rezepte.filter((r) => !zuletztIds.has(r.id));
+  const tellerSichtbar = sucht ? teller : teller.filter((r) => !zuletztIds.has(r.id));
 
   const taste = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     e.stopPropagation();
-    const erster = rezepteSichtbar[0] && sucht ? rezepteSichtbar[0] : treffer[0];
+    const erster = sucht ? (rezepteSichtbar[0] ?? tellerSichtbar[0] ?? treffer[0]) : undefined;
     if (erster) onWahl(erster.id);
   };
 
@@ -99,9 +116,19 @@ export function LebensmittelWahl({ onWahl, mitRezepten, zuletzt = [], zuletztTit
           </div>
         </section>
       )}
+      {mitTellern && tellerSichtbar.length > 0 && (
+        <section aria-label="Deine Teller">
+          <h3 className="dialog-zwischen">Deine Teller</h3>
+          <div className="treffer-liste dialog-liste">
+            {tellerSichtbar.map((k) => (
+              <Treffer key={k.id} lm={k} onWahl={onWahl} />
+            ))}
+          </div>
+        </section>
+      )}
       {sucht && treffer.length > 0 && (
         <section aria-label="Lebensmittel">
-          {mitRezepten && rezepteSichtbar.length > 0 && <h3 className="dialog-zwischen">Lebensmittel</h3>}
+          {(rezepteSichtbar.length > 0 || tellerSichtbar.length > 0) && <h3 className="dialog-zwischen">Lebensmittel</h3>}
           <div className="treffer-liste dialog-liste">
             {treffer.map((k) => (
               <Treffer key={k.id} lm={k} onWahl={onWahl} />
@@ -109,8 +136,8 @@ export function LebensmittelWahl({ onWahl, mitRezepten, zuletzt = [], zuletztTit
           </div>
         </section>
       )}
-      {sucht && treffer.length === 0 && rezepteSichtbar.length === 0 && <p className="leise">Dazu habe ich gerade nichts gefunden.</p>}
-      {!sucht && zuletzt.length === 0 && rezepteSichtbar.length === 0 && <p className="leise">Tippe los, über 7.000 Lebensmittel warten auf dich.</p>}
+      {sucht && treffer.length === 0 && rezepteSichtbar.length === 0 && tellerSichtbar.length === 0 && <p className="leise">Dazu habe ich gerade nichts gefunden.</p>}
+      {!sucht && zuletzt.length === 0 && rezepteSichtbar.length === 0 && tellerSichtbar.length === 0 && <p className="leise">Tippe los, über 7.000 Lebensmittel warten auf dich.</p>}
     </div>
   );
 }

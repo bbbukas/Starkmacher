@@ -27,11 +27,13 @@ import {
   type EintragEingabe,
   type TagebuchEintrag,
 } from '@shared/tagebuch';
+import { istTellerId, postenPruefen, ROLLEN, TELLER_PREFIX, type Rolle } from '@shared/teller';
 import { grenzenAus, taugtAlsVorschlag, vorschlagen, type VorschlagKandidat } from '@shared/vorschlaege';
 import type { Grundbestand } from './bls';
 import type { Datenquelle } from './datenquelle';
 import type { LebensmittelDienst } from './lebensmittelDienst';
 import type { RezeptDienst } from './rezeptDienst';
+import type { TellerDienst } from './tellerDienst';
 
 const ZULETZT_ANZAHL = 8;
 
@@ -42,6 +44,7 @@ export class TagebuchDienst {
     private readonly quelle: () => Datenquelle,
     private readonly lebensmittel: LebensmittelDienst,
     private readonly rezepte: RezeptDienst,
+    private readonly teller: TellerDienst,
     private readonly grund: Grundbestand,
     private readonly jahr: () => number = () => new Date().getFullYear(),
     private readonly uhr: () => string = () => new Date().toISOString(),
@@ -55,6 +58,7 @@ export class TagebuchDienst {
   eintragen(roh: unknown): TagebuchEintrag {
     const eingabe = eingabePruefenEintrag(roh);
     if (istRezeptId(eingabe.lebensmittelId)) return this.rezeptEintragen(eingabe);
+    if (istTellerId(eingabe.lebensmittelId)) return this.gespeichertenTellerEintragen(eingabe);
     const lm = this.lebensmittel.holen(eingabe.lebensmittelId);
     if (!lm) throw new StarkFehler('UNGUELTIG', 'Dieses Lebensmittel gibt es nicht mehr.');
     const eintrag = eintragAnlegen(lm, eingabe, randomUUID(), this.uhr());
@@ -72,7 +76,30 @@ export class TagebuchDienst {
     return eintrag;
   }
 
-  /** Portionen und Zutaten eines Rezept-Eintrags, nur für dieses eine Mal. */
+  private gespeichertenTellerEintragen(eingabe: EintragEingabe): TagebuchEintrag {
+    const teller = this.teller.fuerEintrag(eingabe.lebensmittelId);
+    if (!teller) throw new StarkFehler('UNGUELTIG', 'Diesen Teller gibt es nicht mehr.');
+    return this.tellerFesthalten(teller.bezugId, teller.name, teller.bestandteile, eingabe);
+  }
+
+  /** Was gerade auf dem Teller liegt, auch wenn der Teller gar nicht gespeichert ist. */
+  tellerEintragen(roh: unknown): TagebuchEintrag {
+    if (typeof roh !== 'object' || roh === null) throw new StarkFehler('UNGUELTIG', 'Der Teller stimmt nicht.');
+    const r = roh as Record<string, unknown>;
+    const name = typeof r.name === 'string' && r.name.trim() !== '' ? r.name.trim().slice(0, 160) : 'Teller';
+    const bezugId = typeof r.tellerId === 'string' && istTellerId(r.tellerId) ? r.tellerId : `${TELLER_PREFIX}entwurf`;
+    const eingabe = eingabePruefenEintrag({ datum: r.datum, mahlzeit: r.mahlzeit, lebensmittelId: bezugId, menge: r.menge, einheit: 'Teller', groesse: null });
+    return this.tellerFesthalten(bezugId, name, this.teller.bestandteileFuer(postenPruefen(r.posten)), eingabe);
+  }
+
+  private tellerFesthalten(bezugId: string, name: string, bestandteile: Bestandteil[], eingabe: EintragEingabe): TagebuchEintrag {
+    if (bestandteile.length === 0) throw new StarkFehler('UNGUELTIG', 'Auf diesem Teller liegt nichts, was sich rechnen lässt.');
+    const eintrag = rezeptEintragAnlegen({ rezeptId: bezugId, name, portionen: 1, bestandteile, art: 'teller' }, { ...eingabe, menge: portionenPruefen(eingabe.menge) }, randomUUID(), this.uhr(), randomUUID);
+    this.quelle().tagebuchSpeichern(eintrag);
+    return eintrag;
+  }
+
+  /** Portionen und Zutaten eines Rezept-Eintrags oder Tellers, nur für dieses eine Mal. */
   private rezeptAendern(eintrag: TagebuchEintrag, roh: unknown): TagebuchEintrag {
     if (typeof roh !== 'object' || roh === null) throw new StarkFehler('UNGUELTIG', 'Die Änderung stimmt nicht.');
     const r = roh as Record<string, unknown>;
@@ -89,7 +116,8 @@ export class TagebuchDienst {
       if (typeof z.lebensmittelId !== 'string') throw new StarkFehler('UNGUELTIG', 'Eine Zutat stimmt nicht.');
       const lm = this.lebensmittel.holen(z.lebensmittelId);
       if (!lm) throw new StarkFehler('UNGUELTIG', 'Dieses Lebensmittel gibt es nicht mehr.');
-      return bestandteilAnlegen(lm, mengenAngabePruefen(z), randomUUID());
+      const neu = bestandteilAnlegen(lm, mengenAngabePruefen(z), randomUUID());
+      return ROLLEN.some((rolle) => rolle.id === z.rolle) ? { ...neu, rolle: z.rolle as Rolle } : neu;
     });
     if (bestandteile.length === 0) throw new StarkFehler('UNGUELTIG', 'Bitte lass mindestens eine Zutat stehen, oder lösche den Eintrag.');
     return rezeptEintragAendern(eintrag, { menge, mahlzeit, bestandteile });
@@ -100,7 +128,7 @@ export class TagebuchDienst {
     const quelle = this.quelle();
     const eintrag = quelle.tagebuchEintrag(id);
     if (!eintrag) throw new StarkFehler('UNGUELTIG', 'Diesen Eintrag gibt es nicht mehr.');
-    const neu = eintrag.art === 'rezept' ? this.rezeptAendern(eintrag, roh) : eintragAendern(eintrag, roh);
+    const neu = eintrag.art === 'lebensmittel' ? eintragAendern(eintrag, roh) : this.rezeptAendern(eintrag, roh);
     quelle.tagebuchSpeichern(neu);
     return neu;
   }
@@ -117,6 +145,12 @@ export class TagebuchDienst {
       if (istRezeptId(id)) {
         const rezept = this.rezepte.kurzFuerSuche(id);
         if (rezept) aus.push(rezept);
+        if (aus.length >= ZULETZT_ANZAHL) break;
+        continue;
+      }
+      if (istTellerId(id)) {
+        const teller = this.teller.kurzFuerSuche(id);
+        if (teller) aus.push(teller);
         if (aus.length >= ZULETZT_ANZAHL) break;
         continue;
       }
@@ -176,7 +210,7 @@ export class TagebuchDienst {
       });
     }
     // Eine persönliche Version ersetzt das Original auch hier.
-    const kandidaten = [...this.rezepte.kandidaten(), ...eigene, ...this.ausGrundbestand().filter((k) => !versionen.has(k.id))].map((k) => (gegessen.has(k.id) ? { ...k, vertraut: true } : k));
+    const kandidaten = [...this.rezepte.kandidaten(), ...this.teller.kandidaten(), ...eigene, ...this.ausGrundbestand().filter((k) => !versionen.has(k.id))].map((k) => (gegessen.has(k.id) ? { ...k, vertraut: true } : k));
     const vorschlaege = vorschlagen(kandidaten, luecken, grenzen, { stueckware: profil.stueckware });
     return { vorschlaege, kalorienErreicht: kcalFrei(summe, bedarf) < 25 };
   }

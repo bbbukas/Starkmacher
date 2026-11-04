@@ -1,157 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookPlus, ChevronDown, Copy, LoaderCircle, Pencil, Trash2, TriangleAlert } from 'lucide-react';
-import { mengeText, zahlText } from '@shared/format';
-import { anteilAmBedarf } from '@shared/lebensmittel';
-import { GRUPPEN, naehrstoffeDerGruppe, type GruppenId, type Naehrstoff } from '@shared/naehrstoffe';
-import { datumVon } from '@shared/profil';
-import { EPA_DHA_MINIMUM_MG } from '@shared/referenzwerte';
+import { ArrowLeft, BookPlus, Copy, LoaderCircle, Pencil, Trash2, TriangleAlert } from 'lucide-react';
+import { zahlText } from '@shared/format';
 import { jePortion, rezeptSumme, zubereitungsSchritte, type RezeptAnsicht } from '@shared/rezepte';
-import { fehltText, MAHLZEITEN, mahlzeitNachUhrzeit, mengenText, type Mahlzeit, type SummenWert, type Tagessumme } from '@shared/tagebuch';
-import type { NaehrstoffZiel } from '@shared/bedarf';
+import { mengenText } from '@shared/tagebuch';
 import { api } from '../../api';
-import { useDaten } from '../../daten/DatenKontext';
-import { Dialog, Rueckfrage } from '../../komponenten/Dialog';
+import { Rueckfrage } from '../../komponenten/Dialog';
 import { FotoBild } from '../../komponenten/FotoBild';
+import { InsTagebuchDialog } from '../../komponenten/InsTagebuchDialog';
 import { useMeldungen } from '../../komponenten/Meldungen';
-import { Teller } from '../../komponenten/Teller';
+import { SummenKopf, SummenTabelle } from '../../komponenten/SummenTabelle';
 import { gehe, pfade } from '../../router';
-import { PortionenWahl } from '../tagebuch/EintragDialoge';
 import { HashtagMarke, useHashtags } from './Hashtags';
 
-const OFFEN: readonly GruppenId[] = ['makros', 'vitamine', 'mineralstoffe'];
-
-const anteilKurz = (a: number) => (a > 0 && a < 1 ? '< 1 %' : `${zahlText(a)} %`);
-
-function Zeile({ name, ganz, portion, ziel, einheit, zielText }: { name: string; ganz: SummenWert; portion: SummenWert; ziel: Pick<NaehrstoffZiel, 'von' | 'hoechst'> | undefined; einheit: Pick<Naehrstoff, 'einheit' | 'zeigeInMg'>; zielText?: string }) {
-  // Weiß man bei keiner Zutat etwas, steht „keine Angabe“ statt 0.
-  const nichts = portion.menge === 0 && portion.fehltBei.length > 0;
-  const anteil = nichts ? null : anteilAmBedarf(portion.menge, ziel as NaehrstoffZiel | undefined);
-  const fehlt = fehltText(portion.fehltBei);
-  const text = (s: SummenWert) => (nichts ? <span className="leise">keine Angabe</span> : mengeText(s.menge, einheit));
-  return (
-    <div className="nw-zeile">
-      <span className="name">{name}</span>
-      <span className="nw-100">{text(ganz)}</span>
-      <span className="nw-menge">{text(portion)}</span>
-      <span className="nw-anteil">{anteil === null ? '' : anteilKurz(anteil)}</span>
-      {anteil !== null && (
-        <div className="nw-balken">
-          <div className="balken balken-klein" aria-hidden>
-            <i style={{ width: `${Math.min(anteil, 100)}%` }} />
-          </div>
-          <small className="leise">{zielText ?? (ziel?.von !== undefined ? `vom Minimum (${mengeText(ziel.von, einheit)})` : ziel?.hoechst !== undefined ? `von höchstens ${mengeText(ziel.hoechst, einheit)}` : '')}</small>
-        </div>
-      )}
-      {fehlt && !nichts && (
-        <small className="zeile-fehlt" title={portion.fehltBei.join(', ')}>
-          {fehlt.replace('Eintrag', 'Zutat').replace('Einträgen', 'Zutaten')}
-        </small>
-      )}
-    </div>
-  );
-}
-
-function Naehrwerte({ ganz, portion }: { ganz: Tagessumme; portion: Tagessumme }) {
-  const { stand, bedarf } = useDaten();
-  const ausgeblendet = stand?.profil.ausgeblendet ?? [];
-  return (
-    <>
-      {GRUPPEN.map((gruppe) => {
-        const liste = naehrstoffeDerGruppe(gruppe.id).filter((n) => !ausgeblendet.includes(n.code));
-        if (liste.length === 0) return null;
-        const bekannt = liste.filter((n) => portion.werte[n.code]!.fehltBei.length < portion.anzahl).length;
-        return (
-          <details key={gruppe.id} className={`gruppe g-${gruppe.id}`} open={OFFEN.includes(gruppe.id)}>
-            <summary>
-              <span className="punkt" />
-              <span className="gruppe-titel">{gruppe.titel}</span>
-              <span className="stand">
-                {bekannt} von {liste.length} bekannt
-              </span>
-              <ChevronDown className="i pfeil" aria-hidden />
-            </summary>
-            <div className="zeilen">
-              <div className="nw-kopf">
-                <span />
-                <span>ganzes Rezept</span>
-                <span>je Portion</span>
-                <span>Bedarf</span>
-              </div>
-              {gruppe.id === 'kohlenhydrate' && bedarf && (
-                <Zeile name="Freier Zucker, geschätzt" ganz={ganz.freierZuckerG} portion={portion.freierZuckerG} ziel={{ hoechst: bedarf.freierZuckerHoechstG }} einheit={{ einheit: 'g' }} />
-              )}
-              {gruppe.id === 'fettsaeuren' && <Zeile name="EPA und DHA zusammen" ganz={ganz.epaDhaMg} portion={portion.epaDhaMg} ziel={{ von: EPA_DHA_MINIMUM_MG }} einheit={{ einheit: 'mg' }} />}
-              {liste.map((n) => (
-                <Zeile key={n.code} name={n.name} ganz={ganz.werte[n.code]!} portion={portion.werte[n.code]!} ziel={bedarf?.ziele[n.code]} einheit={n} />
-              ))}
-            </div>
-          </details>
-        );
-      })}
-    </>
-  );
-}
-
-function InsTagebuch({ offen, rezeptId, onSchliessen }: { offen: boolean; rezeptId: string; onSchliessen(): void }) {
-  const { zeigen } = useMeldungen();
-  const [datum, setDatum] = useState(datumVon(new Date()));
-  const [mahlzeit, setMahlzeit] = useState<Mahlzeit>(mahlzeitNachUhrzeit(new Date()));
-  const [portionen, setPortionen] = useState<number | null>(1);
-
-  const eintragen = () => {
-    if (portionen === null) return;
-    void api.tagebuch.eintragen({ datum, mahlzeit, lebensmittelId: rezeptId, menge: portionen, einheit: 'Portion', groesse: null }).then((a) => {
-      if (!a.ok) {
-        zeigen({ art: 'fehler', text: a.meldung });
-        return;
-      }
-      onSchliessen();
-      gehe(pfade.tagebuchTag(datum));
-    });
-  };
-
-  return (
-    <Dialog
-      titel="Ins Tagebuch eintragen"
-      offen={offen}
-      onSchliessen={onSchliessen}
-      onAbsenden={eintragen}
-      knoepfe={
-        <>
-          <button type="button" className="knopf knopf-linie" onClick={onSchliessen}>
-            Abbrechen
-          </button>
-          <button type="submit" className="knopf knopf-akzent" disabled={portionen === null}>
-            Eintragen
-          </button>
-        </>
-      }
-    >
-      <div className="stapel">
-        <PortionenWahl wert={portionen} onWert={setPortionen} />
-        <div className="feld-reihe feld-reihe-2">
-          <div className="feld">
-            <label htmlFor="tagebuch-mahlzeit">Mahlzeit</label>
-            <select id="tagebuch-mahlzeit" value={mahlzeit} onChange={(e) => setMahlzeit(e.target.value as Mahlzeit)}>
-              {MAHLZEITEN.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.titel}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="feld">
-            <label htmlFor="tagebuch-tag">Tag</label>
-            <input id="tagebuch-tag" type="date" value={datum} onChange={(e) => e.target.value && setDatum(e.target.value)} />
-          </div>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
 export function RezeptDetail({ id }: { id: string }) {
-  const { bedarf } = useDaten();
   const { zeigen } = useMeldungen();
   const { hashtags } = useHashtags();
   const [ansicht, setAnsicht] = useState<RezeptAnsicht | null>(null);
@@ -202,18 +63,6 @@ export function RezeptDetail({ id }: { id: string }) {
   const schritte = zubereitungsSchritte(rezept.zubereitung);
   const eigeneHashtags = rezept.hashtags.map((h) => hashtags.find((x) => x.id === h)).filter((h) => h !== undefined);
   const probleme = zutaten.filter((z) => z.problem);
-  const kcal = summen.portion.werte.ENERCC!.menge;
-  const makro = (titel: string, klasse: string, code: string, ziel: number | undefined) => {
-    const g = summen.portion.werte[code]!.menge;
-    return (
-      <div className={`makro ${klasse}`}>
-        <span className="wort">{titel}</span>
-        <span className="zahl">{`${zahlText(g, g < 10 ? 1 : 0)} g`}</span>
-        {ziel !== undefined && <span className="makro-text">{anteilKurz((g / ziel) * 100)} deines Tagesziels</span>}
-      </div>
-    );
-  };
-
   return (
     <main className="seite">
       <a className="zurueck" href={pfade.reiter('rezepte')}>
@@ -247,17 +96,7 @@ export function RezeptDetail({ id }: { id: string }) {
           )}
           <section className="karte" aria-label="Je Portion">
             <h2>Je Portion</h2>
-            <div className="ergebnis-oben">
-              <Teller anteil={bedarf ? kcal / bedarf.kcal : 0}>
-                <span className="teller-zahl">{zahlText(kcal)}</span>
-                <small>{bedarf ? `kcal, ${anteilKurz((kcal / bedarf.kcal) * 100)}` : 'kcal'}</small>
-              </Teller>
-              <div className="makros">
-                {makro('Eiweiß', 'g-aminosaeuren', 'PROT625', bedarf?.eiweissG)}
-                {makro('Fett', 'g-fettsaeuren', 'FAT', bedarf?.fettG)}
-                {makro('Kohlenhydrate', 'g-kohlenhydrate', 'CHO', bedarf?.kohlenhydrateG)}
-              </div>
-            </div>
+            <SummenKopf summe={summen.portion} />
           </section>
           <section className="karte" aria-label="Zutaten">
             <h2>Zutaten</h2>
@@ -309,7 +148,7 @@ export function RezeptDetail({ id }: { id: string }) {
           </section>
         </div>
         <div className="stapel">
-          <Naehrwerte ganz={summen.ganz} portion={summen.portion} />
+          <SummenTabelle ganz={summen.ganz} menge={summen.portion} spalteGanz="ganzes Rezept" spalteMenge="je Portion" />
         </div>
       </div>
 
@@ -331,7 +170,21 @@ export function RezeptDetail({ id }: { id: string }) {
           });
         }}
       />
-      <InsTagebuch offen={tagebuch} rezeptId={id} onSchliessen={() => setTagebuch(false)} />
+      <InsTagebuchDialog
+        offen={tagebuch}
+        einheit="Portionen"
+        onSchliessen={() => setTagebuch(false)}
+        onEintragen={({ datum, mahlzeit, menge }) => {
+          void api.tagebuch.eintragen({ datum, mahlzeit, lebensmittelId: id, menge, einheit: 'Portion', groesse: null }).then((a) => {
+            if (!a.ok) {
+              zeigen({ art: 'fehler', text: a.meldung });
+              return;
+            }
+            setTagebuch(false);
+            gehe(pfade.tagebuchTag(datum));
+          });
+        }}
+      />
     </main>
   );
 }

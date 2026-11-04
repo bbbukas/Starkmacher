@@ -9,6 +9,7 @@ import { LebensmittelDienst } from '../src/main/daten/lebensmittelDienst';
 import { RezeptDienst } from '../src/main/daten/rezeptDienst';
 import { SqliteQuelle } from '../src/main/daten/sqlite';
 import { TagebuchDienst } from '../src/main/daten/tagebuchDienst';
+import { TellerDienst } from '../src/main/daten/tellerDienst';
 import { BLS_FASSUNG, BLS_SCHEMA } from '@shared/blsAufbau';
 import type { LebensmittelEingabe } from '@shared/lebensmittel';
 import { leeresProfil, PROFIL_ID, type Profil } from '@shared/profil';
@@ -62,7 +63,8 @@ beforeEach(() => {
   zeit = 0;
   const uhr = () => new Date(Date.UTC(2026, 10, 4, 12, 0, zeit++)).toISOString();
   lebensmittel = new LebensmittelDienst(() => quelle, grund, () => {}, uhr);
-  tagebuch = new TagebuchDienst(() => quelle, lebensmittel, new RezeptDienst(() => quelle, lebensmittel), grund, () => 2026, uhr);
+  const rezepte = new RezeptDienst(() => quelle, lebensmittel);
+  tagebuch = new TagebuchDienst(() => quelle, lebensmittel, rezepte, new TellerDienst(() => quelle, lebensmittel, rezepte), grund, () => 2026, uhr);
 });
 
 afterEach(() => {

@@ -16,6 +16,8 @@ export function routeAus(hash: string): Route {
 export const pfade = {
   reiter: (id: ReiterId) => `#/${id}`,
   tagebuchTag: (datum: string) => `#/tagebuch/${datum}`,
+  teller: (id: string) => `#/teller/${encodeURIComponent(id)}`,
+  tellerNeu: () => '#/teller/neu',
   rezept: (id: string) => `#/rezepte/${encodeURIComponent(id)}`,
   rezeptNeu: () => '#/rezepte/neu',
   rezeptBearbeiten: (id: string) => `#/rezepte/${encodeURIComponent(id)}/bearbeiten`,

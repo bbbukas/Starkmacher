@@ -6,6 +6,13 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { MenueBefehl, StarkmacherApi } from '@shared/api';
 
 const api: StarkmacherApi = {
+  teller: {
+    liste: (text) => ipcRenderer.invoke('teller:liste', text),
+    holen: (id) => ipcRenderer.invoke('teller:holen', id),
+    speichern: (eingabe) => ipcRenderer.invoke('teller:speichern', eingabe),
+    loeschen: (id) => ipcRenderer.invoke('teller:loeschen', id),
+    vorschau: (posten) => ipcRenderer.invoke('teller:vorschau', posten),
+  },
   rezepte: {
     liste: (anfrage) => ipcRenderer.invoke('rezepte:liste', anfrage),
     holen: (id) => ipcRenderer.invoke('rezepte:holen', id),
@@ -19,6 +26,7 @@ const api: StarkmacherApi = {
   tagebuch: {
     tag: (datum) => ipcRenderer.invoke('tagebuch:tag', datum),
     eintragen: (eingabe) => ipcRenderer.invoke('tagebuch:eintragen', eingabe),
+    tellerEintragen: (eingabe) => ipcRenderer.invoke('tagebuch:tellerEintragen', eingabe),
     aendern: (id, aenderung) => ipcRenderer.invoke('tagebuch:aendern', id, aenderung),
     loeschen: (id) => ipcRenderer.invoke('tagebuch:loeschen', id),
     zuletzt: () => ipcRenderer.invoke('tagebuch:zuletzt'),

@@ -21,8 +21,9 @@ export interface VorschlagKandidat {
   werte: Werte;
   freierZuckerG: number | null;
   umrechnung?: Umrechnung;
-  /** Nur bei Rezepten: Gramm je Portion. Vorgeschlagen wird dann eine ganze oder halbe Portion. */
+  /** Nur bei Rezepten und Tellern: Gramm je Portion. Vorgeschlagen wird dann eine ganze oder halbe Portion. */
   portionG?: number;
+  portionEinheit?: 'Portion' | 'Teller';
   /** Schon einmal gegessen? Vertrautes kommt etwas eher dran. */
   vertraut?: boolean;
 }
@@ -287,10 +288,10 @@ function mengeFuerLebensmittel(k: VorschlagKandidat, passt: number, stueckware: 
   return mengeFuerVorschlag(moeglich, k.umrechnung ?? standardUmrechnung(k.name, k.code), stueckware);
 }
 
-/** Ein Rezept gibt es als ganze oder halbe Portion. */
-function mengeFuerRezept(portionG: number, passt: number): { menge: number; einheit: EintragEinheit; groesse: null; gramm: number } | null {
-  if (passt >= portionG) return { menge: 1, einheit: 'Portion', groesse: null, gramm: portionG };
-  if (passt >= portionG / 2) return { menge: 0.5, einheit: 'Portion', groesse: null, gramm: portionG / 2 };
+/** Ein Rezept oder Teller kommt ganz oder halb. */
+function mengeFuerRezept(portionG: number, passt: number, einheit: EintragEinheit): { menge: number; einheit: EintragEinheit; groesse: null; gramm: number } | null {
+  if (passt >= portionG) return { menge: 1, einheit, groesse: null, gramm: portionG };
+  if (passt >= portionG / 2) return { menge: 0.5, einheit, groesse: null, gramm: portionG / 2 };
   return null;
 }
 
@@ -304,7 +305,7 @@ export function vorschlagen(kandidaten: readonly VorschlagKandidat[], luecken: r
   for (const k of kandidaten) {
     if (k.werte.ENERCC === undefined) continue; // Ohne Kalorien lässt sich die Grenze nicht einhalten.
     const passt = hoechstenGramm(k, grenzen);
-    const menge = k.portionG ? mengeFuerRezept(k.portionG, passt) : mengeFuerLebensmittel(k, passt, stueckware);
+    const menge = k.portionG ? mengeFuerRezept(k.portionG, passt, k.portionEinheit ?? 'Portion') : mengeFuerLebensmittel(k, passt, stueckware);
     if (!menge || menge.gramm > passt) continue;
     const eigen = k.herkunft !== 'bls';
     const wirkung = wirkungFuer(k, menge.gramm, luecken);

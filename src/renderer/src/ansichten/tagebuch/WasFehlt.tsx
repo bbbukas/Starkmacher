@@ -9,6 +9,7 @@ import { useMeldungen } from '../../komponenten/Meldungen';
 
 function woher(v: Vorschlag): string {
   if (v.herkunft === 'rezept') return 'dein Rezept';
+  if (v.herkunft === 'teller') return 'dein Teller';
   if (v.klein) return 'kleine Ergänzung';
   if (v.herkunft === 'eigen') return 'dein Lebensmittel';
   if (v.herkunft === 'version') return 'deine Version, aus dem Bundeslebensmittelschlüssel';

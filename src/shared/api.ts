@@ -7,7 +7,8 @@ import type { FehlerCode } from './fehler';
 import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
 import type { Gewicht, Profil, Stand } from './profil';
 import type { Hashtag, RezeptAnfrage, RezeptAnsicht, RezeptEingabe, RezeptKurz, RezeptZutat, ZutatStand } from './rezepte';
-import type { EintragAenderung, EintragEingabe, TagebuchEintrag } from './tagebuch';
+import type { EintragAenderung, EintragEingabe, Mahlzeit, TagebuchEintrag } from './tagebuch';
+import type { PostenStand, TellerAnsicht, TellerEingabe, TellerKurz, TellerPosten } from './teller';
 import type { Vorschlag } from './vorschlaege';
 
 export interface TagAntwort {
@@ -86,6 +87,14 @@ export interface AehnlichesLebensmittel {
 }
 
 export interface StarkmacherApi {
+  teller: {
+    liste(text: string): Promise<Antwort<TellerKurz[]>>;
+    holen(id: string): Promise<Antwort<TellerAnsicht | null>>;
+    speichern(eingabe: TellerEingabe): Promise<Antwort<TellerAnsicht>>;
+    loeschen(id: string): Promise<Antwort<null>>;
+    /** Nährwerte, während der Teller noch entsteht. */
+    vorschau(posten: TellerPosten[]): Promise<Antwort<PostenStand[]>>;
+  };
   rezepte: {
     liste(anfrage: RezeptAnfrage): Promise<Antwort<RezeptKurz[]>>;
     holen(id: string): Promise<Antwort<RezeptAnsicht | null>>;
@@ -100,6 +109,8 @@ export interface StarkmacherApi {
   tagebuch: {
     tag(datum: string): Promise<Antwort<TagAntwort>>;
     eintragen(eingabe: EintragEingabe): Promise<Antwort<TagebuchEintrag>>;
+    /** Trägt ein, was gerade auf dem Teller liegt, gespeichert oder nicht. */
+    tellerEintragen(eingabe: { datum: string; mahlzeit: Mahlzeit; menge: number; name: string; posten: TellerPosten[]; tellerId?: string }): Promise<Antwort<TagebuchEintrag>>;
     aendern(id: string, aenderung: EintragAenderung): Promise<Antwort<TagebuchEintrag>>;
     loeschen(id: string): Promise<Antwort<null>>;
     zuletzt(): Promise<Antwort<LebensmittelKurz[]>>;

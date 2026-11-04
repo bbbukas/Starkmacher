@@ -12,6 +12,7 @@ import { DatenDienst } from './daten/dienst';
 import { LebensmittelDienst } from './daten/lebensmittelDienst';
 import { RezeptDienst } from './daten/rezeptDienst';
 import { TagebuchDienst } from './daten/tagebuchDienst';
+import { TellerDienst } from './daten/tellerDienst';
 import { Einstellungen } from './einstellungen';
 import { fotoEntfernen } from './fotos';
 import { ipcEinrichten } from './ipc';
@@ -122,8 +123,9 @@ if (!app.requestSingleInstanceLock()) {
     const grundbestand = grundbestandOeffnen(app.isPackaged ? join(process.resourcesPath, 'bls-4.0.sqlite') : join(app.getAppPath(), 'ressourcen/bls-4.0.sqlite'));
     const lebensmittel = new LebensmittelDienst(() => dienst.bereit(), grundbestand, (name) => fotoEntfernen(name, dienst.fotoOrdner));
     const rezepte = new RezeptDienst(() => dienst.bereit(), lebensmittel, (name) => fotoEntfernen(name, dienst.fotoOrdner));
-    const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, rezepte, grundbestand);
-    ipcEinrichten(dienst, lebensmittel, rezepte, tagebuch, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
+    const teller = new TellerDienst(() => dienst.bereit(), lebensmittel, rezepte);
+    const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, rezepte, teller, grundbestand);
+    ipcEinrichten(dienst, lebensmittel, rezepte, teller, tagebuch, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
     menueEinrichten(() => hauptfenster);
 
     app.setAboutPanelOptions({

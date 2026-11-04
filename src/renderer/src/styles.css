@@ -437,6 +437,13 @@ small { font-size: 0.82em; }
 .zutat-anpassen { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
 .zutat-anpassen .feld-zeile input { max-width: 130px; }
 
+.teller-rolle-kopf { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.teller-rolle-kopf h2 { margin: 0; font-size: 17px; }
+.teller-rolle-kopf .dazu { margin-top: 0; }
+.teller-rolle .zutat-zeile:first-of-type { margin-top: 6px; }
+.rollen-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
+.art-chip-nach { margin: 0 0 0 7px; }
+
 /* Einstellungen */
 .angaben { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 14px; margin: 0 0 12px; }
 .angaben dt { color: var(--tinte2); }

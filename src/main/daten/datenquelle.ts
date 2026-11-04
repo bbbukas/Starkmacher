@@ -8,6 +8,7 @@ import type { LebensmittelEingabe } from '@shared/lebensmittel';
 import type { Hashtag, Rezept } from '@shared/rezepte';
 import type { Gewicht, Profil, Stand } from '@shared/profil';
 import type { TagebuchEintrag } from '@shared/tagebuch';
+import type { Teller } from '@shared/teller';
 
 /** Ein eigenes Lebensmittel oder eine persönliche Version, wie es gespeichert ist. */
 export type GespeichertesLebensmittel = Omit<LebensmittelEingabe, 'id'> & { id: string; geaendertAm: string };
@@ -38,6 +39,10 @@ export interface Datenquelle {
   hashtagSpeichern(hashtag: Hashtag): void;
   /** Nimmt den Hashtag auch aus allen Rezepten, alles auf einmal oder gar nicht. */
   hashtagLoeschen(id: string): void;
+  tellerListe(): Teller[];
+  tellerHolen(id: string): Teller | null;
+  tellerSpeichern(teller: Teller): void;
+  tellerLoeschen(id: string): void;
   /** Gibt es schon etwas, das sich zu sichern lohnt? */
   hatDaten(): boolean;
   /** Bringt die Datenbank auf den neuesten Aufbau. */

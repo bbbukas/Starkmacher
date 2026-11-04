@@ -5,6 +5,7 @@ import { zahlText } from '@shared/format';
 import { werteJe100g, type Lebensmittel, type LebensmittelKurz } from '@shared/lebensmittel';
 import { istRezeptId, jePortion, rezeptSumme, type RezeptAnsicht } from '@shared/rezepte';
 import { MAHLZEITEN, type BestandteilAenderung, type Mahlzeit, type TagebuchEintrag } from '@shared/tagebuch';
+import { istTellerId, nachRollen, tellerSumme, type Rolle, type TellerAnsicht } from '@shared/teller';
 import { api } from '../../api';
 import { useDaten } from '../../daten/DatenKontext';
 import { Dialog } from '../../komponenten/Dialog';
@@ -39,14 +40,14 @@ const PORTIONEN = [
   { wert: 2, text: '2' },
 ];
 
-/** Portionen wählen: die üblichen mit einem Klick, jede andere als Zahl. */
-export function PortionenWahl({ wert, onWert }: { wert: number | null; onWert(wert: number | null): void }) {
+/** Portionen oder Teller wählen: die üblichen mit einem Klick, jede andere als Zahl. */
+export function PortionenWahl({ wert, onWert, titel = 'Portionen' }: { wert: number | null; onWert(wert: number | null): void; titel?: 'Portionen' | 'Teller' }) {
   return (
     <div className="portionen-wahl">
-      <ZahlFeld label="Portionen" wert={wert} onWert={onWert} istErlaubt={(z) => z > 0 && z <= 200} fehlerText="Bitte eine Zahl über 0 eintragen." leerErlaubt stellen={2} />
-      <div className="filter" role="group" aria-label="Übliche Portionen">
+      <ZahlFeld label={titel} wert={wert} onWert={onWert} istErlaubt={(z) => z > 0 && z <= 200} fehlerText="Bitte eine Zahl über 0 eintragen." leerErlaubt stellen={2} />
+      <div className="filter" role="group" aria-label={`Übliche Menge: ${titel}`}>
         {PORTIONEN.map((p) => (
-          <button key={p.wert} type="button" className={`filter-knopf${wert === p.wert ? ' gewaehlt' : ''}`} aria-label={`${p.text} Portionen`} onClick={() => onWert(p.wert)}>
+          <button key={p.wert} type="button" className={`filter-knopf${wert === p.wert ? ' gewaehlt' : ''}`} aria-label={`${p.text} ${titel}`} onClick={() => onWert(p.wert)}>
             {p.text}
           </button>
         ))}
@@ -63,6 +64,7 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
   const [zuletzt, setZuletzt] = useState<LebensmittelKurz[]>([]);
   const [lm, setLm] = useState<Lebensmittel | null>(null);
   const [rezept, setRezept] = useState<RezeptAnsicht | null>(null);
+  const [teller, setTeller] = useState<TellerAnsicht | null>(null);
   const [mengen, setMengen] = useState<Mengenstand>({ menge: 100, einheit: 'g', groesse: 'M' });
   const [portionen, setPortionen] = useState<number | null>(1);
   const [speichert, setSpeichert] = useState(false);
@@ -72,11 +74,19 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
     if (!offen) return;
     setLm(null);
     setRezept(null);
+    setTeller(null);
     setPortionen(1);
     void api.tagebuch.zuletzt().then((a) => a.ok && setZuletzt(a.wert));
   }, [offen]);
 
   const waehlen = (id: string) => {
+    if (istTellerId(id)) {
+      void api.teller.holen(id).then((a) => {
+        if (a.ok && a.wert) setTeller(a.wert);
+        else zeigen({ art: 'fehler', text: a.ok ? 'Diesen Teller gibt es nicht mehr.' : a.meldung });
+      });
+      return;
+    }
     if (istRezeptId(id)) {
       void api.rezepte.holen(id).then((a) => {
         if (a.ok && a.wert) setRezept(a.wert);
@@ -104,7 +114,7 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
 
   const gramm = lm && mengen.menge !== null ? inGramm(mengen.menge, mengen.einheit, lm.umrechnung, mengen.groesse) : null;
   const titelMahlzeit = MAHLZEITEN.find((m) => m.id === mahlzeit)?.titel ?? '';
-  const portionSumme = useMemo(() => (rezept ? jePortion(rezeptSumme(rezept.zutaten), rezept.rezept.portionen) : null), [rezept]);
+  const portionSumme = useMemo(() => (rezept ? jePortion(rezeptSumme(rezept.zutaten), rezept.rezept.portionen) : teller ? tellerSumme(teller.posten) : null), [rezept, teller]);
 
   const senden = (eingabe: Parameters<typeof api.tagebuch.eintragen>[0]) => {
     setSpeichert(true);
@@ -116,6 +126,10 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
   };
 
   const eintragen = () => {
+    if (teller) {
+      if (portionen !== null) senden({ datum, mahlzeit, lebensmittelId: teller.teller.id, menge: portionen, einheit: 'Teller', groesse: null });
+      return;
+    }
     if (rezept) {
       if (portionen !== null) senden({ datum, mahlzeit, lebensmittelId: rezept.rezept.id, menge: portionen, einheit: 'Portion', groesse: null });
       return;
@@ -124,7 +138,8 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
     senden({ datum, mahlzeit, lebensmittelId: lm.id, menge: mengen.menge, einheit: mengen.einheit, groesse: lm.umrechnung.groessen && mengen.einheit === 'Stück' ? mengen.groesse : null });
   };
 
-  const gewaehlt = lm !== null || rezept !== null;
+  const gewaehlt = lm !== null || rezept !== null || teller !== null;
+  const naeherungMenge = rezept || teller ? portionen === null : mengen.menge === null || gramm === null;
   return (
     <Dialog
       titel={`Eintragen: ${titelMahlzeit}`}
@@ -141,27 +156,28 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
               onClick={() => {
                 setLm(null);
                 setRezept(null);
+                setTeller(null);
               }}
             >
               <ArrowLeft className="i" aria-hidden /> Andere Auswahl
             </button>
-            <button type="submit" className="knopf knopf-akzent" disabled={speichert || (rezept ? portionen === null : mengen.menge === null || gramm === null)}>
+            <button type="submit" className="knopf knopf-akzent" disabled={speichert || naeherungMenge}>
               {speichert ? <LoaderCircle className="i dreht" aria-hidden /> : null} Eintragen
             </button>
           </>
         ) : undefined
       }
     >
-      {rezept && portionSumme && (
+      {(rezept || teller) && portionSumme && (
         <div className="stapel">
           <div>
-            <b className="eintrag-name">{rezept.rezept.name}</b>
-            <span className="leise"> · ergibt {zahlText(rezept.rezept.portionen, 2)} Portionen</span>
+            <b className="eintrag-name">{rezept?.rezept.name ?? teller?.teller.name}</b>
+            {rezept && <span className="leise"> · ergibt {zahlText(rezept.rezept.portionen, 2)} Portionen</span>}
           </div>
-          <PortionenWahl wert={portionen} onWert={setPortionen} />
+          <PortionenWahl wert={portionen} onWert={setPortionen} titel={teller ? 'Teller' : 'Portionen'} />
           {portionen !== null && (
             <NaehrwertSatz
-              vorn={portionen === 1 ? '1 Portion' : `${zahlText(portionen, 2)} Portionen`}
+              vorn={teller ? `${zahlText(portionen, 2)} Teller` : portionen === 1 ? '1 Portion' : `${zahlText(portionen, 2)} Portionen`}
               kcal={portionSumme.werte.ENERCC!.menge * portionen}
               eiweiss={portionSumme.werte.PROT625!.menge * portionen}
               fett={portionSumme.werte.FAT!.menge * portionen}
@@ -181,7 +197,7 @@ export function EintragenDialog(props: { offen: boolean; datum: string; mahlzeit
           <Vorschau werte={werteJe100g(lm)} gramm={gramm} einheitUngefaehr={istUngefaehr(mengen.einheit)} />
         </div>
       )}
-      {!gewaehlt && offen && <LebensmittelWahl key={String(offen)} mitRezepten zuletzt={zuletzt} onWahl={waehlen} />}
+      {!gewaehlt && offen && <LebensmittelWahl key={String(offen)} mitRezepten mitTellern zuletzt={zuletzt} onWahl={waehlen} />}
     </Dialog>
   );
 }
@@ -277,10 +293,12 @@ interface ZutatZeile {
   groesse: Groesse | null;
   umrechnung: Umrechnung;
   werteJe100g: Readonly<Record<string, number>>;
+  rolle: Rolle;
+  gehoertZu?: string;
 }
 
 /**
- * Ein Rezept im Tagebuch: Portionen ändern und die Zutaten für dieses eine Mal anpassen, zum Beispiel weniger Öl.
+ * Ein Rezept oder Teller im Tagebuch: Portionen ändern und die Zutaten für dieses eine Mal anpassen, zum Beispiel weniger Öl.
  * Die Mengen gelten für genau das, was eingetragen ist. Das Rezept selbst bleibt, wie es ist.
  */
 function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: TagebuchEintrag; onSchliessen(): void; onFertig(): void }) {
@@ -288,7 +306,7 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
   const [portionen, setPortionen] = useState<number | null>(eintrag.menge);
   const [mahlzeit, setMahlzeit] = useState<Mahlzeit>(eintrag.mahlzeit);
   const [zeilen, setZeilen] = useState<ZutatZeile[]>(() =>
-    (eintrag.rezept?.bestandteile ?? []).map((b) => ({ schluessel: b.id, id: b.id, lebensmittelId: b.lebensmittelId, name: b.name, menge: b.menge, einheit: b.einheit, groesse: b.groesse, umrechnung: b.umrechnung, werteJe100g: b.werteJe100g })),
+    (eintrag.rezept?.bestandteile ?? []).map((b) => ({ schluessel: b.id, id: b.id, lebensmittelId: b.lebensmittelId, name: b.name, menge: b.menge, einheit: b.einheit, groesse: b.groesse, umrechnung: b.umrechnung, werteJe100g: b.werteJe100g, rolle: b.rolle ?? 'extra', ...(b.gehoertZu ? { gehoertZu: b.gehoertZu } : {}) })),
   );
   const [geaendert, setGeaendert] = useState(false);
   const [dazu, setDazu] = useState(false);
@@ -324,8 +342,8 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
 
   const speichern = () => {
     if (unvollstaendig || portionen === null) return;
-    const bestandteile: BestandteilAenderung[] = zeilen.map((z) => ({ ...(z.id ? { id: z.id } : { lebensmittelId: z.lebensmittelId }), menge: z.menge!, einheit: z.einheit, groesse: z.groesse }));
-    void api.tagebuch.aendern(eintrag.id, { menge: portionen, einheit: 'Portion', groesse: null, mahlzeit, ...(geaendert ? { bestandteile } : {}) }).then((a) => {
+    const bestandteile: BestandteilAenderung[] = zeilen.map((z) => ({ ...(z.id ? { id: z.id } : { lebensmittelId: z.lebensmittelId, rolle: z.rolle }), menge: z.menge!, einheit: z.einheit, groesse: z.groesse }));
+    void api.tagebuch.aendern(eintrag.id, { menge: portionen, einheit: eintrag.einheit, groesse: null, mahlzeit, ...(geaendert ? { bestandteile } : {}) }).then((a) => {
       if (a.ok) onFertig();
       else zeigen({ art: 'fehler', text: a.meldung });
     });
@@ -334,14 +352,14 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
   return (
     <Dialog titel={eintrag.name} offen breit onSchliessen={onSchliessen} onAbsenden={speichern} knoepfe={<Knoepfe id={eintrag.id} onSchliessen={onSchliessen} onFertig={onFertig} gesperrt={unvollstaendig} />}>
       <div className="stapel">
-        <PortionenWahl wert={portionen} onWert={portionenSetzen} />
+        <PortionenWahl wert={portionen} onWert={portionenSetzen} titel={eintrag.art === 'teller' ? 'Teller' : 'Portionen'} />
         <MahlzeitFeld wert={mahlzeit} onWert={setMahlzeit} />
         <section aria-label="Zutaten für dieses eine Mal">
           <h3 className="dialog-zwischen">Zutaten für dieses eine Mal</h3>
           <div className="zutaten-anpassen">
-            {zeilen.map((z) => (
+            {(eintrag.art === 'teller' ? nachRollen(zeilen).flatMap((g) => g.eintraege) : zeilen).map((z) => (
               <div key={z.schluessel} className="zutat-anpassen">
-                <ZahlFeld label={z.name} einheit={z.einheit} wert={z.menge} onWert={(m) => zeileSetzen(z.schluessel, m)} istErlaubt={(w) => w > 0 && w <= 100000} fehlerText="Bitte eine Menge über 0 eintragen." leerErlaubt stellen={2} />
+                <ZahlFeld label={z.gehoertZu ? `${z.name} (aus ${z.gehoertZu})` : z.name} einheit={z.einheit} wert={z.menge} onWert={(m) => zeileSetzen(z.schluessel, m)} istErlaubt={(w) => w > 0 && w <= 100000} fehlerText="Bitte eine Menge über 0 eintragen." leerErlaubt stellen={2} />
                 <button
                   type="button"
                   className="symbolknopf"
@@ -361,7 +379,7 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
           </button>
         </section>
         <NaehrwertSatz kcal={gesamt('ENERCC')} eiweiss={gesamt('PROT625')} fett={gesamt('FAT')} kohlenhydrate={gesamt('CHO')} />
-        <p className="leise dialog-text">Das gilt nur für diesen Eintrag. Das Rezept bleibt, wie es ist.</p>
+        <p className="leise dialog-text">Das gilt nur für diesen Eintrag. {eintrag.art === 'teller' ? 'Der Teller bleibt, wie er ist.' : 'Das Rezept bleibt, wie es ist.'}</p>
       </div>
       <ZutatDialog
         offen={dazu}
@@ -370,7 +388,7 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
         onFertig={(z) => {
           setDazu(false);
           setGeaendert(true);
-          setZeilen((alt) => [...alt, { schluessel: `neu-${Date.now()}-${alt.length}`, lebensmittelId: z.lebensmittelId, name: z.name, menge: z.menge, einheit: z.einheit, groesse: z.groesse, umrechnung: z.umrechnung, werteJe100g: z.werteJe100g }]);
+          setZeilen((alt) => [...alt, { schluessel: `neu-${Date.now()}-${alt.length}`, lebensmittelId: z.lebensmittelId, name: z.name, menge: z.menge, einheit: z.einheit, groesse: z.groesse, umrechnung: z.umrechnung, werteJe100g: z.werteJe100g, rolle: 'extra' }]);
         }}
       />
     </Dialog>
@@ -380,6 +398,6 @@ function RezeptBearbeiten({ eintrag, onSchliessen, onFertig }: { eintrag: Tagebu
 export function EintragBearbeiten(props: { eintrag: TagebuchEintrag | null; onSchliessen(): void; onFertig(): void }) {
   const { eintrag } = props;
   if (!eintrag) return null;
-  if (eintrag.art === 'rezept') return <RezeptBearbeiten key={eintrag.id} eintrag={eintrag} onSchliessen={props.onSchliessen} onFertig={props.onFertig} />;
+  if (eintrag.art !== 'lebensmittel') return <RezeptBearbeiten key={eintrag.id} eintrag={eintrag} onSchliessen={props.onSchliessen} onFertig={props.onFertig} />;
   return <LebensmittelBearbeiten key={eintrag.id} eintrag={eintrag} onSchliessen={props.onSchliessen} onFertig={props.onFertig} />;
 }

@@ -8,6 +8,7 @@ import { MeinBedarf } from './ansichten/MeinBedarf';
 import { ReiterSeite } from './ansichten/ReiterSeite';
 import { RezepteBereich } from './ansichten/rezepte/RezepteBereich';
 import { TagebuchSeite } from './ansichten/tagebuch/TagebuchSeite';
+import { TellerBereich } from './ansichten/teller/TellerBereich';
 import { useDaten } from './daten/DatenKontext';
 import { Kopfzeile } from './komponenten/Kopfzeile';
 import { useMeldungen } from './komponenten/Meldungen';
@@ -90,7 +91,8 @@ export function App() {
       {route.name === 'reiter' && route.reiter === 'lebensmittel' && <LebensmittelBereich unter={route.unter} />}
       {route.name === 'reiter' && route.reiter === 'tagebuch' && <TagebuchSeite datumImPfad={route.unter[0]} />}
       {route.name === 'reiter' && route.reiter === 'rezepte' && <RezepteBereich unter={route.unter} />}
-      {route.name === 'reiter' && (route.reiter === 'teller' || route.reiter === 'verlauf') && <ReiterSeite key={route.reiter} id={route.reiter} />}
+      {route.name === 'reiter' && route.reiter === 'teller' && <TellerBereich unter={route.unter} />}
+      {route.name === 'reiter' && route.reiter === 'verlauf' && <ReiterSeite key={route.reiter} id={route.reiter} />}
       {route.name === 'bedarf' && <MeinBedarf />}
       {route.name === 'einstellungen' && <EinstellungenSeite />}
     </>

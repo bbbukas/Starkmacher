@@ -10,6 +10,7 @@ import type { DatenDienst } from './daten/dienst';
 import type { LebensmittelDienst } from './daten/lebensmittelDienst';
 import type { RezeptDienst } from './daten/rezeptDienst';
 import type { TagebuchDienst } from './daten/tagebuchDienst';
+import type { TellerDienst } from './daten/tellerDienst';
 import { fotoEinlesen, fotoEntfernen, fotoLesen } from './fotos';
 import type { Sicherungen } from './sicherung';
 
@@ -23,7 +24,19 @@ async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>>
   }
 }
 
-export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, teller: TellerDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+  ipcMain.handle('teller:liste', (_e, text: unknown) => alsAntwort(() => teller.liste(text)));
+  ipcMain.handle('teller:holen', (_e, id: unknown) => alsAntwort(() => teller.holen(id)));
+  ipcMain.handle('teller:speichern', (_e, eingabe: unknown) => alsAntwort(() => teller.speichern(eingabe)));
+  ipcMain.handle('teller:loeschen', (_e, id: unknown) =>
+    alsAntwort(() => {
+      teller.loeschen(id);
+      return null;
+    }),
+  );
+  ipcMain.handle('teller:vorschau', (_e, posten: unknown) => alsAntwort(() => teller.vorschau(posten)));
+  ipcMain.handle('tagebuch:tellerEintragen', (_e, eingabe: unknown) => alsAntwort(() => tagebuch.tellerEintragen(eingabe)));
+
   ipcMain.handle('rezepte:liste', (_e, anfrage: Partial<RezeptAnfrage> | undefined) => alsAntwort(() => rezepte.liste(anfrage)));
   ipcMain.handle('rezepte:holen', (_e, id: unknown) => alsAntwort(() => rezepte.holen(id)));
   ipcMain.handle('rezepte:speichern', (_e, eingabe: unknown) => alsAntwort(() => rezepte.speichern(eingabe)));

@@ -13,6 +13,7 @@ import type { Umrechnung } from '@shared/einheiten';
 import { leeresProfil, PROFIL_ID, type Aktivitaet, type Geschlecht, type Gewicht, type Profil, type Stand, type Stueckware, type Tempo, type Ziel } from '@shared/profil';
 import type { Hashtag, HashtagFarbe, Rezept } from '@shared/rezepte';
 import type { TagebuchEintrag } from '@shared/tagebuch';
+import type { Teller } from '@shared/teller';
 import type { Datenquelle, GespeichertesLebensmittel } from './datenquelle';
 
 /** Jeder Eintrag bringt die Datenbank eine Fassung weiter. Vorhandene Einträge nie ändern, nur neue anhängen. */
@@ -81,6 +82,12 @@ const MIGRATIONEN: readonly string[] = [
      profil_id TEXT NOT NULL REFERENCES profile(id),
      name TEXT NOT NULL,
      farbe TEXT NOT NULL
+   );`,
+  `CREATE TABLE teller (
+     id TEXT PRIMARY KEY,
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     daten TEXT NOT NULL,
+     geaendert_am TEXT NOT NULL
    );`,
 ];
 
@@ -355,6 +362,34 @@ export class SqliteQuelle implements Datenquelle {
       for (const r of this.rezepteListe()) {
         if (r.hashtags.includes(id)) this.rezeptSchreiben({ ...r, hashtags: r.hashtags.filter((h) => h !== id) });
       }
+    });
+  }
+
+  tellerListe(): Teller[] {
+    const zeilen = this.db.prepare('SELECT daten FROM teller WHERE profil_id = ?').all(PROFIL_ID) as unknown as { daten: string }[];
+    return zeilen.map((z) => JSON.parse(z.daten) as Teller);
+  }
+
+  tellerHolen(id: string): Teller | null {
+    const z = this.db.prepare('SELECT daten FROM teller WHERE profil_id = ? AND id = ?').get(PROFIL_ID, id) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as Teller) : null;
+  }
+
+  tellerSpeichern(t: Teller): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db
+        .prepare(
+          `INSERT INTO teller (id, profil_id, daten, geaendert_am) VALUES (?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET daten = excluded.daten, geaendert_am = excluded.geaendert_am`,
+        )
+        .run(t.id, PROFIL_ID, JSON.stringify(t), t.geaendertAm);
+    });
+  }
+
+  tellerLoeschen(id: string): void {
+    this.inTransaktion(() => {
+      this.db.prepare('DELETE FROM teller WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
     });
   }
 
