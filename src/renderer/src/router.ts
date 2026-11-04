@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react';
 import { istReiter, type ReiterId } from './reiter';
 
-export type Route = { name: 'reiter'; reiter: ReiterId } | { name: 'bedarf' } | { name: 'einstellungen' };
+/** `unter`: was nach dem Reiter im Pfad steht, z. B. die Kennung eines Lebensmittels. */
+export type Route = { name: 'reiter'; reiter: ReiterId; unter: readonly string[] } | { name: 'bedarf' } | { name: 'einstellungen' };
 
 /** "#/rezepte" → Route. Unbekanntes führt zum Tagebuch: Das Programm öffnet mit dem heutigen Tag. */
 export function routeAus(hash: string): Route {
-  const teil = hash.replace(/^#\/?/, '').split('/')[0];
+  const [teil, ...rest] = hash.replace(/^#\/?/, '').split('/');
   if (teil === 'bedarf') return { name: 'bedarf' };
   if (teil === 'einstellungen') return { name: 'einstellungen' };
-  return { name: 'reiter', reiter: istReiter(teil) ? teil : 'tagebuch' };
+  if (!istReiter(teil)) return { name: 'reiter', reiter: 'tagebuch', unter: [] };
+  return { name: 'reiter', reiter: teil, unter: rest.map(decodeURIComponent) };
 }
 
 export const pfade = {
   reiter: (id: ReiterId) => `#/${id}`,
+  lebensmittel: (id: string) => `#/lebensmittel/${encodeURIComponent(id)}`,
+  lebensmittelNeu: () => '#/lebensmittel/neu',
+  lebensmittelBearbeiten: (id: string) => `#/lebensmittel/${encodeURIComponent(id)}/bearbeiten`,
   bedarf: () => '#/bedarf',
   einstellungen: () => '#/einstellungen',
 };

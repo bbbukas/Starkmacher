@@ -3,6 +3,7 @@ import { LoaderCircle, TriangleAlert } from 'lucide-react';
 import { api } from './api';
 import { EinstellungenSeite } from './ansichten/EinstellungenSeite';
 import { ErsterStart } from './ansichten/ErsterStart';
+import { LebensmittelBereich } from './ansichten/lebensmittel/LebensmittelBereich';
 import { MeinBedarf } from './ansichten/MeinBedarf';
 import { ReiterSeite } from './ansichten/ReiterSeite';
 import { useDaten } from './daten/DatenKontext';
@@ -84,7 +85,8 @@ export function App() {
   return (
     <>
       <Kopfzeile route={route} />
-      {route.name === 'reiter' && <ReiterSeite key={route.reiter} id={route.reiter} />}
+      {route.name === 'reiter' && route.reiter === 'lebensmittel' && <LebensmittelBereich unter={route.unter} />}
+      {route.name === 'reiter' && route.reiter !== 'lebensmittel' && <ReiterSeite key={route.reiter} id={route.reiter} />}
       {route.name === 'bedarf' && <MeinBedarf />}
       {route.name === 'einstellungen' && <EinstellungenSeite />}
     </>

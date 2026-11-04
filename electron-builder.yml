@@ -14,6 +14,10 @@ files:
   - out/**
   - package.json
 asar: true
+# Der Grundbestand (npm run bls), außerhalb des Archivs, damit SQLite ihn direkt lesen kann.
+extraResources:
+  - from: ressourcen/bls-4.0.sqlite
+    to: bls-4.0.sqlite
 mac:
   category: public.app-category.healthcare-fitness
   icon: build/icon.png

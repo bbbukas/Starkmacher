@@ -120,7 +120,8 @@ export class DatenDienst {
     this.quelle = null;
   }
 
-  private bereit(): Datenquelle {
+  /** Die offene Datenquelle. Nach dem Wiederherstellen ist es eine neue, deshalb immer hier fragen. */
+  bereit(): Datenquelle {
     if (!this.quelle) throw this.fehler ?? new StarkFehler('FEHLER', 'Die Daten lassen sich gerade nicht öffnen.');
     return this.quelle;
   }

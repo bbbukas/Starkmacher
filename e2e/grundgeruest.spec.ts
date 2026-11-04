@@ -64,9 +64,9 @@ test('Erster Start führt durch „Mein Bedarf“, danach gibt es die Reiter', a
     await foto(seite, '6-tagebuch');
 
     // Jeder Reiter hat seine Seite
-    await seite.getByRole('link', { name: 'Lebensmittel' }).click();
-    await expect(seite.getByRole('heading', { name: 'Lebensmittel' })).toBeVisible();
-    await expect(seite.getByText('Dieser Bereich kommt in Phase 2.')).toBeVisible();
+    await seite.getByRole('link', { name: 'Rezepte' }).click();
+    await expect(seite.getByRole('heading', { name: 'Rezepte' })).toBeVisible();
+    await expect(seite.getByText('Dieser Bereich kommt in Phase 4.')).toBeVisible();
 
     // Neustart: kein erster Start mehr, alles noch da, eine Sicherung ist entstanden
     await gespeichert(seite);

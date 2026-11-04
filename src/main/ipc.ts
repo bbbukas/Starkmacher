@@ -3,9 +3,11 @@
  * Alles, was von der Oberfläche kommt, wird hier oder im Datenbaustein geprüft.
  */
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import type { Aenderung, Antwort, ProgrammInfo } from '@shared/api';
+import type { Aenderung, Antwort, ProgrammInfo, SuchAnfrage } from '@shared/api';
 import { StarkFehler } from '@shared/fehler';
 import type { DatenDienst } from './daten/dienst';
+import type { LebensmittelDienst } from './daten/lebensmittelDienst';
+import { fotoEinlesen, fotoEntfernen, fotoLesen } from './fotos';
 import type { Sicherungen } from './sicherung';
 
 async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>> {
@@ -18,7 +20,43 @@ async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>>
   }
 }
 
-export function ipcEinrichten(dienst: DatenDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+  ipcMain.handle('lebensmittel:suchen', (_e, anfrage: SuchAnfrage) => alsAntwort(() => lebensmittel.suchen(anfrage)));
+  ipcMain.handle('lebensmittel:holen', (_e, id: unknown) => alsAntwort(() => lebensmittel.holen(id)));
+  ipcMain.handle('lebensmittel:speichern', (_e, eingabe: unknown) => alsAntwort(() => lebensmittel.speichern(eingabe)));
+  ipcMain.handle('lebensmittel:loeschen', (_e, id: unknown) =>
+    alsAntwort(() => {
+      lebensmittel.loeschen(id);
+      return null;
+    }),
+  );
+  ipcMain.handle('lebensmittel:aehnliche', (_e, anfrage: { name?: unknown; werte?: unknown }) => alsAntwort(() => lebensmittel.aehnliche(anfrage)));
+  ipcMain.handle('lebensmittel:umrechnungSpeichern', (_e, id: unknown, umrechnung: unknown) => alsAntwort(() => lebensmittel.umrechnungSpeichern(id, umrechnung)));
+  ipcMain.on('lebensmittel:verwendet', (_e, id: unknown) => {
+    try {
+      lebensmittel.verwendet(id);
+    } catch (fehler) {
+      console.error('[starkmacher] „zuletzt verwendet“ nicht gespeichert', fehler);
+    }
+  });
+  ipcMain.handle('lebensmittel:fotoWaehlen', (e) =>
+    alsAntwort(async () => {
+      const fenster = BrowserWindow.fromWebContents(e.sender);
+      const optionen: Electron.OpenDialogOptions = {
+        title: 'Foto wählen',
+        buttonLabel: 'Dieses Foto nehmen',
+        properties: ['openFile'],
+        filters: [{ name: 'Bilder', extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'] }],
+      };
+      const wahl = fenster ? await dialog.showOpenDialog(fenster, optionen) : await dialog.showOpenDialog(optionen);
+      const pfad = wahl.filePaths[0];
+      if (wahl.canceled || !pfad) return null;
+      return fotoEinlesen(pfad, dienst.fotoOrdner);
+    }),
+  );
+  ipcMain.handle('lebensmittel:fotoLesen', (_e, name: unknown) => alsAntwort(() => fotoLesen(name, dienst.fotoOrdner)));
+  ipcMain.on('lebensmittel:fotoVerwerfen', (_e, name: unknown) => fotoEntfernen(name, dienst.fotoOrdner));
+
   ipcMain.handle('daten:laden', () => dienst.laden());
   ipcMain.handle('daten:speichern', (_e, aenderung: Aenderung) => alsAntwort(() => dienst.speichern(aenderung)));
   ipcMain.on('daten:speichernSofort', (e, aenderung: Aenderung) => {

@@ -9,8 +9,9 @@
 import { chmodSync, existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { StarkFehler } from '@shared/fehler';
+import type { Umrechnung } from '@shared/einheiten';
 import { leeresProfil, PROFIL_ID, type Aktivitaet, type Geschlecht, type Gewicht, type Profil, type Stand, type Stueckware, type Tempo, type Ziel } from '@shared/profil';
-import type { Datenquelle } from './datenquelle';
+import type { Datenquelle, GespeichertesLebensmittel } from './datenquelle';
 
 /** Jeder Eintrag bringt die Datenbank eine Fassung weiter. Vorhandene Einträge nie ändern, nur neue anhängen. */
 const MIGRATIONEN: readonly string[] = [
@@ -38,6 +39,24 @@ const MIGRATIONEN: readonly string[] = [
      datum TEXT NOT NULL,
      kg REAL NOT NULL,
      PRIMARY KEY (profil_id, datum)
+   );`,
+  `CREATE TABLE eigene_lebensmittel (
+     id TEXT PRIMARY KEY,
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     daten TEXT NOT NULL,
+     geaendert_am TEXT NOT NULL
+   );
+   CREATE TABLE umrechnungen (
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     lebensmittel_id TEXT NOT NULL,
+     daten TEXT NOT NULL,
+     PRIMARY KEY (profil_id, lebensmittel_id)
+   );
+   CREATE TABLE zuletzt_verwendet (
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     lebensmittel_id TEXT NOT NULL,
+     zeit TEXT NOT NULL,
+     PRIMARY KEY (profil_id, lebensmittel_id)
    );`,
 ];
 
@@ -154,6 +173,77 @@ export class SqliteQuelle implements Datenquelle {
     });
   }
 
+  eigeneListe(): GespeichertesLebensmittel[] {
+    const zeilen = this.db.prepare('SELECT daten FROM eigene_lebensmittel WHERE profil_id = ?').all(PROFIL_ID) as unknown as { daten: string }[];
+    return zeilen.map((z) => JSON.parse(z.daten) as GespeichertesLebensmittel);
+  }
+
+  eigenesHolen(id: string): GespeichertesLebensmittel | null {
+    const z = this.db.prepare('SELECT daten FROM eigene_lebensmittel WHERE profil_id = ? AND id = ?').get(PROFIL_ID, id) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as GespeichertesLebensmittel) : null;
+  }
+
+  eigenesSpeichern(lebensmittel: GespeichertesLebensmittel): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db
+        .prepare(
+          `INSERT INTO eigene_lebensmittel (id, profil_id, daten, geaendert_am) VALUES (?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET daten = excluded.daten, geaendert_am = excluded.geaendert_am`,
+        )
+        .run(lebensmittel.id, PROFIL_ID, JSON.stringify(lebensmittel), lebensmittel.geaendertAm);
+    });
+  }
+
+  eigenesLoeschen(id: string): void {
+    this.inTransaktion(() => {
+      this.db.prepare('DELETE FROM eigene_lebensmittel WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
+      // Rein eigene Lebensmittel sind dann ganz weg. Das Original einer Version bleibt: Es behält Umrechnung und „zuletzt verwendet“.
+      if (id.startsWith('eigen:')) {
+        this.db.prepare('DELETE FROM umrechnungen WHERE profil_id = ? AND lebensmittel_id = ?').run(PROFIL_ID, id);
+        this.db.prepare('DELETE FROM zuletzt_verwendet WHERE profil_id = ? AND lebensmittel_id = ?').run(PROFIL_ID, id);
+      }
+    });
+  }
+
+  umrechnungHolen(id: string): Umrechnung | null {
+    const z = this.db.prepare('SELECT daten FROM umrechnungen WHERE profil_id = ? AND lebensmittel_id = ?').get(PROFIL_ID, id) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as Umrechnung) : null;
+  }
+
+  umrechnungSpeichern(id: string, umrechnung: Umrechnung | null): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      if (umrechnung === null) {
+        this.db.prepare('DELETE FROM umrechnungen WHERE profil_id = ? AND lebensmittel_id = ?').run(PROFIL_ID, id);
+        return;
+      }
+      this.db
+        .prepare(
+          `INSERT INTO umrechnungen (profil_id, lebensmittel_id, daten) VALUES (?, ?, ?)
+           ON CONFLICT (profil_id, lebensmittel_id) DO UPDATE SET daten = excluded.daten`,
+        )
+        .run(PROFIL_ID, id, JSON.stringify(umrechnung));
+    });
+  }
+
+  verwendetMerken(id: string, zeit: string): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db
+        .prepare(
+          `INSERT INTO zuletzt_verwendet (profil_id, lebensmittel_id, zeit) VALUES (?, ?, ?)
+           ON CONFLICT (profil_id, lebensmittel_id) DO UPDATE SET zeit = excluded.zeit`,
+        )
+        .run(PROFIL_ID, id, zeit);
+    });
+  }
+
+  zuletztVerwendet(anzahl: number): string[] {
+    const zeilen = this.db.prepare('SELECT lebensmittel_id FROM zuletzt_verwendet WHERE profil_id = ? ORDER BY zeit DESC LIMIT ?').all(PROFIL_ID, anzahl) as unknown as { lebensmittel_id: string }[];
+    return zeilen.map((z) => z.lebensmittel_id);
+  }
+
   kopieSchreiben(zielDatei: string): void {
     this.db.prepare('VACUUM INTO ?').run(zielDatei);
     chmodSync(zielDatei, 0o600);
@@ -161,6 +251,11 @@ export class SqliteQuelle implements Datenquelle {
 
   schliessen(): void {
     this.db.close();
+  }
+
+  /** Alles Persönliche hängt an einem Profil, also gibt es das Profil spätestens jetzt. */
+  private profilSicherstellen(): void {
+    this.db.prepare(`INSERT OR IGNORE INTO profile (id, geaendert_am) VALUES (?, ?)`).run(PROFIL_ID, this.uhr());
   }
 
   private profilSchreiben(p: Profil): void {
@@ -225,7 +320,8 @@ function profilAus(z: ProfilZeile): Profil {
     eigeneKohlenhydrateG: z.eigene_kohlenhydrate_g,
     einrichtungFertig: z.einrichtung_fertig === 1,
     stueckware: z.stueckware,
-    ausgeblendet: JSON.parse(z.ausgeblendet) as string[],
+    // Cystein hieß bis Phase 1 irrtümlich CYS, im BLS heißt es CYSTE.
+    ausgeblendet: (JSON.parse(z.ausgeblendet) as string[]).map((code) => (code === 'CYS' ? 'CYSTE' : code)),
     letzteZiele: z.letzte_ziele ? (JSON.parse(z.letzte_ziele) as Profil['letzteZiele']) : null,
   };
 }

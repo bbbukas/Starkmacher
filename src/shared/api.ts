@@ -2,7 +2,9 @@
  * Was die Oberfläche über window.starkmacher (src/preload) erreichen kann.
  * Mehr nicht: kein Dateizugriff, kein Netzwerk.
  */
+import type { Umrechnung } from './einheiten';
 import type { FehlerCode } from './fehler';
+import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
 import type { Gewicht, Profil, Stand } from './profil';
 
 export type Antwort<T> = { ok: true; wert: T } | { ok: false; code: FehlerCode; meldung: string };
@@ -45,7 +47,47 @@ export interface ProgrammInfo {
 
 export type MenueBefehl = 'einstellungen' | 'bedarf' | 'sicherung-erstellen';
 
+export interface SuchAnfrage {
+  text: string;
+  filter: SuchFilter;
+}
+
+export interface SuchErgebnis {
+  zuletzt: LebensmittelKurz[];
+  treffer: LebensmittelKurz[];
+  /** Alle Treffer, auch die, die nicht mehr in die Liste passen. */
+  gesamt: number;
+  grundbestandDa: boolean;
+}
+
+/** Ein Vorschlag für die Schätzung fehlender Werte. */
+export interface AehnlichesLebensmittel {
+  code: string;
+  name: string;
+  gruppe: string | null;
+  /** Packungswerte zum Vergleichen. */
+  vergleich: Werte;
+  /** Was beim Übernehmen dazukäme. */
+  schaetzung: Schaetzung;
+}
+
 export interface StarkmacherApi {
+  lebensmittel: {
+    suchen(anfrage: SuchAnfrage): Promise<Antwort<SuchErgebnis>>;
+    holen(id: string): Promise<Antwort<Lebensmittel | null>>;
+    speichern(eingabe: LebensmittelEingabe): Promise<Antwort<Lebensmittel>>;
+    /** Löscht ein eigenes Lebensmittel oder setzt eine persönliche Version auf das Original zurück. */
+    loeschen(id: string): Promise<Antwort<null>>;
+    aehnliche(anfrage: { name: string; werte: Werte }): Promise<Antwort<AehnlichesLebensmittel[]>>;
+    /** Null setzt auf die Standardwerte zurück. */
+    umrechnungSpeichern(id: string, umrechnung: Umrechnung | null): Promise<Antwort<Lebensmittel>>;
+    verwendet(id: string): void;
+    /** Öffnet die Dateiauswahl und gibt den Namen im Fotoordner, null bei Abbruch. */
+    fotoWaehlen(): Promise<Antwort<string | null>>;
+    fotoLesen(name: string): Promise<Antwort<string | null>>;
+    /** Ein gewähltes, aber nicht gespeichertes Foto wieder entfernen. */
+    fotoVerwerfen(name: string): void;
+  };
   daten: {
     laden(): Promise<LadeErgebnis>;
     speichern(aenderung: Aenderung): Promise<Antwort<Stand>>;

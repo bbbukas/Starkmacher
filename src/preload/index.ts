@@ -6,6 +6,18 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { MenueBefehl, StarkmacherApi } from '@shared/api';
 
 const api: StarkmacherApi = {
+  lebensmittel: {
+    suchen: (anfrage) => ipcRenderer.invoke('lebensmittel:suchen', anfrage),
+    holen: (id) => ipcRenderer.invoke('lebensmittel:holen', id),
+    speichern: (eingabe) => ipcRenderer.invoke('lebensmittel:speichern', eingabe),
+    loeschen: (id) => ipcRenderer.invoke('lebensmittel:loeschen', id),
+    aehnliche: (anfrage) => ipcRenderer.invoke('lebensmittel:aehnliche', anfrage),
+    umrechnungSpeichern: (id, umrechnung) => ipcRenderer.invoke('lebensmittel:umrechnungSpeichern', id, umrechnung),
+    verwendet: (id) => ipcRenderer.send('lebensmittel:verwendet', id),
+    fotoWaehlen: () => ipcRenderer.invoke('lebensmittel:fotoWaehlen'),
+    fotoLesen: (name) => ipcRenderer.invoke('lebensmittel:fotoLesen', name),
+    fotoVerwerfen: (name) => ipcRenderer.send('lebensmittel:fotoVerwerfen', name),
+  },
   daten: {
     laden: () => ipcRenderer.invoke('daten:laden'),
     speichern: (aenderung) => ipcRenderer.invoke('daten:speichern', aenderung),

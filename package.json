@@ -14,9 +14,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "electron-vite build && playwright test",
+    "test:e2e": "node scripts/bls-bauen.mjs --wenn-fehlt && electron-vite build && playwright test",
     "symbol": "electron scripts/programmsymbol.mjs",
-    "paket": "electron-vite build && electron-builder --mac --dir"
+    "bls": "node scripts/bls-bauen.mjs",
+    "paket": "node scripts/bls-bauen.mjs --wenn-fehlt && electron-vite build && electron-builder --mac --dir"
   },
   "engines": {
     "node": ">=22"

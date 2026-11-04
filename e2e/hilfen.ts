@@ -21,8 +21,11 @@ export function testordnerAnlegen(): Testordner {
 
 /** Startet das gebaute Programm (out/). */
 export async function programmStarten(ordner: Testordner): Promise<{ app: ElectronApplication; seite: Page }> {
+  // STARKMACHER_PAKET: die fertige App aus release/ prüfen statt des Entwicklungsstands.
   const app = await electron.launch({
-    args: [join(import.meta.dirname, '..')],
+    ...(process.env.STARKMACHER_PAKET
+      ? { executablePath: join(import.meta.dirname, '../release/mac-arm64/Starkmacher.app/Contents/MacOS/Starkmacher'), args: [] }
+      : { args: [join(import.meta.dirname, '..')] }),
     env: { ...process.env, STARKMACHER_DATEN_ORDNER: ordner.daten, STARKMACHER_ICLOUD_ORDNER: ordner.icloud, ELECTRON_RENDERER_URL: '' },
   });
   const seite = await app.firstWindow();

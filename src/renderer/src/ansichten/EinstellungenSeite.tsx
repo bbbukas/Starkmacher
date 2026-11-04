@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArchiveRestore, ChevronDown, FolderOpen, FolderSearch, HardDrive, Save, TriangleAlert } from 'lucide-react';
 import { SICHERUNGEN_BEHALTEN, type Antwort, type ProgrammInfo, type SicherungsEintrag, type SicherungsZustand } from '@shared/api';
 import { zahlText } from '@shared/format';
+import { BLS_AENDERUNGEN, BLS_QUELLE } from '@shared/lebensmittel';
 import { GRUPPEN, NAEHRSTOFFE, naehrstoffeDerGruppe, type Gruppe } from '@shared/naehrstoffe';
 import type { Stueckware } from '@shared/profil';
 import { QUELLEN } from '@shared/referenzwerte';
@@ -180,7 +181,7 @@ export function EinstellungenSeite() {
         <h3>Quellen</h3>
         <ul className="quellen">
           <li>
-            <b>Lebensmittel:</b> Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. DOI 10.25826/Data20251217-134202-0. Lizenz CC BY 4.0.
+            <b>Lebensmittel:</b> {BLS_QUELLE} {BLS_AENDERUNGEN}
           </li>
           <li>
             <b>Zwei Stufen:</b> Das Minimum ist für jeden Nährstoff die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO, geprüft am 03.11.2026. Das Optimum ist der Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt, geprüft am 04.11.2026 (Eiweiß, Fett, Ballaststoffe, EPA und DHA). Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen und am Optimum.

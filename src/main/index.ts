@@ -7,8 +7,11 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, session } from 'electron';
+import { grundbestandOeffnen } from './daten/bls';
 import { DatenDienst } from './daten/dienst';
+import { LebensmittelDienst } from './daten/lebensmittelDienst';
 import { Einstellungen } from './einstellungen';
+import { fotoEntfernen } from './fotos';
 import { ipcEinrichten } from './ipc';
 import { menueEinrichten } from './menue';
 import { Sicherungen } from './sicherung';
@@ -113,7 +116,10 @@ if (!app.requestSingleInstanceLock()) {
     // Sicherung bei jedem Start – bevor irgendetwas geändert wird. Klappt sie nicht, zeigt die Oberfläche es an.
     await sicherungen.erstellen().catch((fehler) => console.error('[starkmacher] Start-Sicherung fehlgeschlagen', fehler));
     dienst.migrieren();
-    ipcEinrichten(dienst, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
+    // Der Grundbestand liegt im Programm (electron-builder.yml), beim Entwickeln im Projektordner.
+    const grundbestand = grundbestandOeffnen(app.isPackaged ? join(process.resourcesPath, 'bls-4.0.sqlite') : join(app.getAppPath(), 'ressourcen/bls-4.0.sqlite'));
+    const lebensmittel = new LebensmittelDienst(() => dienst.bereit(), grundbestand, (name) => fotoEntfernen(name, dienst.fotoOrdner));
+    ipcEinrichten(dienst, lebensmittel, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
     menueEinrichten(() => hauptfenster);
 
     app.setAboutPanelOptions({
@@ -126,7 +132,10 @@ if (!app.requestSingleInstanceLock()) {
     const symbol = join(app.getAppPath(), 'build/icon.png');
     if (entwicklung && process.platform === 'darwin' && existsSync(symbol)) app.dock?.setIcon(symbol);
 
-    app.on('before-quit', () => dienst.schliessen());
+    app.on('before-quit', () => {
+      dienst.schliessen();
+      grundbestand.schliessen();
+    });
     fensterOeffnen();
   });
 

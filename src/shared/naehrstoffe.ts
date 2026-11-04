@@ -138,7 +138,7 @@ export const NAEHRSTOFFE: readonly Naehrstoff[] = [
     ['ALA', 'Alanin', 'g'],
     ['ARG', 'Arginin', 'g'],
     ['ASP', 'Asparaginsäure', 'g'],
-    ['CYS', 'Cystein', 'g'],
+    ['CYSTE', 'Cystein', 'g'],
     ['GLU', 'Glutaminsäure', 'g'],
     ['GLY', 'Glycin', 'g'],
     ['PRO', 'Prolin', 'g'],
