@@ -11,8 +11,8 @@ import { NAEHRSTOFFE, naehrstoff, type GruppenId, type Naehrstoff } from './naeh
 
 export type Werte = Readonly<Record<string, number>>;
 export type Basis = 'g' | 'ml';
-/** bls: unverändert aus dem BLS. eigen: selbst angelegt. version: persönliche Version eines BLS-Lebensmittels. */
-export type Herkunft = 'bls' | 'eigen' | 'version';
+/** bls: unverändert aus dem BLS. eigen: selbst angelegt. version: persönliche Version eines BLS-Lebensmittels. rezept: ein eigenes Rezept in einer Auswahl. */
+export type Herkunft = 'bls' | 'eigen' | 'version' | 'rezept';
 export type SuchFilter = 'alle' | 'bls' | 'eigene';
 
 export const BLS_PREFIX = 'bls:';

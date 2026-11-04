@@ -16,6 +16,10 @@ export function routeAus(hash: string): Route {
 export const pfade = {
   reiter: (id: ReiterId) => `#/${id}`,
   tagebuchTag: (datum: string) => `#/tagebuch/${datum}`,
+  rezept: (id: string) => `#/rezepte/${encodeURIComponent(id)}`,
+  rezeptNeu: () => '#/rezepte/neu',
+  rezeptBearbeiten: (id: string) => `#/rezepte/${encodeURIComponent(id)}/bearbeiten`,
+  rezeptKopie: (id: string) => `#/rezepte/${encodeURIComponent(id)}/kopie`,
   lebensmittel: (id: string) => `#/lebensmittel/${encodeURIComponent(id)}`,
   lebensmittelNeu: () => '#/lebensmittel/neu',
   lebensmittelBearbeiten: (id: string) => `#/lebensmittel/${encodeURIComponent(id)}/bearbeiten`,

@@ -5,6 +5,7 @@
  */
 import type { Umrechnung } from '@shared/einheiten';
 import type { LebensmittelEingabe } from '@shared/lebensmittel';
+import type { Hashtag, Rezept } from '@shared/rezepte';
 import type { Gewicht, Profil, Stand } from '@shared/profil';
 import type { TagebuchEintrag } from '@shared/tagebuch';
 
@@ -29,6 +30,14 @@ export interface Datenquelle {
   tagebuchLoeschen(id: string): void;
   /** Kennungen der zuletzt gegessenen Lebensmittel, das neueste zuerst, jedes einmal. */
   tagebuchZuletzt(anzahl: number): string[];
+  rezepteListe(): Rezept[];
+  rezeptHolen(id: string): Rezept | null;
+  rezeptSpeichern(rezept: Rezept): void;
+  rezeptLoeschen(id: string): void;
+  hashtagsListe(): Hashtag[];
+  hashtagSpeichern(hashtag: Hashtag): void;
+  /** Nimmt den Hashtag auch aus allen Rezepten, alles auf einmal oder gar nicht. */
+  hashtagLoeschen(id: string): void;
   /** Gibt es schon etwas, das sich zu sichern lohnt? */
   hatDaten(): boolean;
   /** Bringt die Datenbank auf den neuesten Aufbau. */

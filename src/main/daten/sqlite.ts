@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { StarkFehler } from '@shared/fehler';
 import type { Umrechnung } from '@shared/einheiten';
 import { leeresProfil, PROFIL_ID, type Aktivitaet, type Geschlecht, type Gewicht, type Profil, type Stand, type Stueckware, type Tempo, type Ziel } from '@shared/profil';
+import type { Hashtag, HashtagFarbe, Rezept } from '@shared/rezepte';
 import type { TagebuchEintrag } from '@shared/tagebuch';
 import type { Datenquelle, GespeichertesLebensmittel } from './datenquelle';
 
@@ -69,6 +70,18 @@ const MIGRATIONEN: readonly string[] = [
    );
    CREATE INDEX tagebuch_tag ON tagebuch (profil_id, datum);
    CREATE INDEX tagebuch_neueste ON tagebuch (profil_id, erstellt_am);`,
+  `CREATE TABLE rezepte (
+     id TEXT PRIMARY KEY,
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     daten TEXT NOT NULL,
+     geaendert_am TEXT NOT NULL
+   );
+   CREATE TABLE hashtags (
+     id TEXT PRIMARY KEY,
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     name TEXT NOT NULL,
+     farbe TEXT NOT NULL
+   );`,
 ];
 
 const BESCHAEDIGT_TEXT = 'Die Datendatei lässt sich nicht lesen.';
@@ -288,6 +301,61 @@ export class SqliteQuelle implements Datenquelle {
       .prepare('SELECT lebensmittel_id, MAX(erstellt_am) AS zuletzt FROM tagebuch WHERE profil_id = ? GROUP BY lebensmittel_id ORDER BY zuletzt DESC LIMIT ?')
       .all(PROFIL_ID, anzahl) as unknown as { lebensmittel_id: string }[];
     return zeilen.map((z) => z.lebensmittel_id);
+  }
+
+  rezepteListe(): Rezept[] {
+    const zeilen = this.db.prepare('SELECT daten FROM rezepte WHERE profil_id = ?').all(PROFIL_ID) as unknown as { daten: string }[];
+    return zeilen.map((z) => JSON.parse(z.daten) as Rezept);
+  }
+
+  rezeptHolen(id: string): Rezept | null {
+    const z = this.db.prepare('SELECT daten FROM rezepte WHERE profil_id = ? AND id = ?').get(PROFIL_ID, id) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as Rezept) : null;
+  }
+
+  rezeptSpeichern(r: Rezept): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.rezeptSchreiben(r);
+    });
+  }
+
+  private rezeptSchreiben(r: Rezept): void {
+    this.db
+      .prepare(
+        `INSERT INTO rezepte (id, profil_id, daten, geaendert_am) VALUES (?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET daten = excluded.daten, geaendert_am = excluded.geaendert_am`,
+      )
+      .run(r.id, PROFIL_ID, JSON.stringify(r), r.geaendertAm);
+  }
+
+  rezeptLoeschen(id: string): void {
+    this.inTransaktion(() => {
+      this.db.prepare('DELETE FROM rezepte WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
+    });
+  }
+
+  hashtagsListe(): Hashtag[] {
+    const zeilen = this.db.prepare('SELECT id, name, farbe FROM hashtags WHERE profil_id = ?').all(PROFIL_ID) as unknown as { id: string; name: string; farbe: HashtagFarbe }[];
+    return zeilen.map((z) => ({ id: z.id, name: z.name, farbe: z.farbe }));
+  }
+
+  hashtagSpeichern(h: Hashtag): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db
+        .prepare(`INSERT INTO hashtags (id, profil_id, name, farbe) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, farbe = excluded.farbe`)
+        .run(h.id, PROFIL_ID, h.name, h.farbe);
+    });
+  }
+
+  hashtagLoeschen(id: string): void {
+    this.inTransaktion(() => {
+      this.db.prepare('DELETE FROM hashtags WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
+      for (const r of this.rezepteListe()) {
+        if (r.hashtags.includes(id)) this.rezeptSchreiben({ ...r, hashtags: r.hashtags.filter((h) => h !== id) });
+      }
+    });
   }
 
   kopieSchreiben(zielDatei: string): void {

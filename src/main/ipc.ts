@@ -5,8 +5,10 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import type { Aenderung, Antwort, ProgrammInfo, SuchAnfrage } from '@shared/api';
 import { StarkFehler } from '@shared/fehler';
+import type { RezeptAnfrage } from '@shared/rezepte';
 import type { DatenDienst } from './daten/dienst';
 import type { LebensmittelDienst } from './daten/lebensmittelDienst';
+import type { RezeptDienst } from './daten/rezeptDienst';
 import type { TagebuchDienst } from './daten/tagebuchDienst';
 import { fotoEinlesen, fotoEntfernen, fotoLesen } from './fotos';
 import type { Sicherungen } from './sicherung';
@@ -21,7 +23,26 @@ async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>>
   }
 }
 
-export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+  ipcMain.handle('rezepte:liste', (_e, anfrage: Partial<RezeptAnfrage> | undefined) => alsAntwort(() => rezepte.liste(anfrage)));
+  ipcMain.handle('rezepte:holen', (_e, id: unknown) => alsAntwort(() => rezepte.holen(id)));
+  ipcMain.handle('rezepte:speichern', (_e, eingabe: unknown) => alsAntwort(() => rezepte.speichern(eingabe)));
+  ipcMain.handle('rezepte:loeschen', (_e, id: unknown) =>
+    alsAntwort(() => {
+      rezepte.loeschen(id);
+      return null;
+    }),
+  );
+  ipcMain.handle('rezepte:vorschau', (_e, zutaten: unknown) => alsAntwort(() => rezepte.vorschau(zutaten)));
+  ipcMain.handle('rezepte:hashtags', () => alsAntwort(() => rezepte.hashtags()));
+  ipcMain.handle('rezepte:hashtagSpeichern', (_e, hashtag: unknown) => alsAntwort(() => rezepte.hashtagSpeichern(hashtag)));
+  ipcMain.handle('rezepte:hashtagLoeschen', (_e, id: unknown) =>
+    alsAntwort(() => {
+      rezepte.hashtagLoeschen(id);
+      return null;
+    }),
+  );
+
   ipcMain.handle('tagebuch:tag', (_e, datum: unknown) => alsAntwort(() => tagebuch.tag(datum)));
   ipcMain.handle('tagebuch:eintragen', (_e, eingabe: unknown) => alsAntwort(() => tagebuch.eintragen(eingabe)));
   ipcMain.handle('tagebuch:aendern', (_e, id: unknown, aenderung: unknown) => alsAntwort(() => tagebuch.aendern(id, aenderung)));

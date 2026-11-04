@@ -19,6 +19,7 @@ const WARTEN_MS = 120;
 let letzteSuche: { text: string; filter: SuchFilter } = { text: '', filter: 'alle' };
 
 export function Herkunftsmarke({ lm }: { lm: Pick<LebensmittelKurz, 'herkunft' | 'gruppe'> }) {
+  if (lm.herkunft === 'rezept') return <span className="marke-klein marke-rezept">Rezept</span>;
   if (lm.herkunft === 'eigen') return <span className="marke-klein marke-eigen">Eigenes</span>;
   if (lm.herkunft === 'version') return <span className="marke-klein marke-eigen">Eigene Version</span>;
   return <span className="marke-klein">{(lm.gruppe && GRUPPEN_BLS[lm.gruppe]) || 'BLS'}</span>;

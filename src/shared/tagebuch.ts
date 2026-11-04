@@ -5,13 +5,15 @@
  * Lebensmittel, bleiben vergangene Tage, wie sie sind.
  */
 import type { Bedarf } from './bedarf';
-import { inGramm, istUngefaehr, umrechnungPruefen, type Groesse, type MengenEinheit, type Umrechnung } from './einheiten';
+import { inGramm, istUngefaehr, umrechnungPruefen, type EintragEinheit, type Groesse, type MengenEinheit, type Umrechnung } from './einheiten';
 import { StarkFehler } from './fehler';
 import { mengeText, zahlText } from './format';
 import { werteJe100g, type Lebensmittel, type Werte } from './lebensmittel';
 import { NAEHRSTOFFE, naehrstoff, type GruppenId, type Naehrstoff } from './naehrstoffe';
 import { datumErlaubt } from './profil';
 import { EPA_DHA_MINIMUM_MG, EPA_DHA_OPTIMUM_MG } from './referenzwerte';
+
+const GRUNDWERTE: Umrechnung = { dichte: 1, el: 15, tl: 5, prise: 0.5, stueck: null, groessen: null, scheibe: null, dose: null, becher: null, packung: null };
 
 export type Mahlzeit = 'fruehstueck' | 'mittag' | 'abend' | 'nacht' | 'snacks';
 
@@ -41,11 +43,9 @@ export interface MengenAngabe {
   groesse: Groesse | null;
 }
 
-export interface TagebuchEintrag extends MengenAngabe {
+/** Ein Lebensmittel mit Menge und dem festgehaltenen Stand seiner Nährwerte. */
+export interface Bestandteil extends MengenAngabe {
   id: string;
-  datum: string;
-  mahlzeit: Mahlzeit;
-  art: 'lebensmittel';
   lebensmittelId: string;
   name: string;
   marke: string | null;
@@ -55,19 +55,51 @@ export interface TagebuchEintrag extends MengenAngabe {
   werteJe100g: Werte;
   spuren: readonly string[];
   freierZuckerJe100g: number | null;
+}
+
+/** Bei einem Rezept im Tagebuch: die Zutaten für genau die eingetragene Menge. */
+export interface RezeptStand {
+  /** So viele Portionen ergibt das Rezept. */
+  portionen: number;
+  bestandteile: Bestandteil[];
+  /** Für dieses eine Mal geändert, zum Beispiel weniger Öl. */
+  angepasst: boolean;
+}
+
+export interface TagebuchEintrag extends Omit<Bestandteil, 'einheit'> {
+  einheit: EintragEinheit;
+  datum: string;
+  mahlzeit: Mahlzeit;
+  art: 'lebensmittel' | 'rezept';
+  rezept?: RezeptStand;
   erstelltAm: string;
 }
 
-export interface EintragEingabe extends MengenAngabe {
+export interface EintragEingabe {
+  menge: number;
+  einheit: EintragEinheit;
+  groesse: Groesse | null;
   datum: string;
   mahlzeit: Mahlzeit;
+  /** Kennung eines Lebensmittels oder eines Rezepts. */
   lebensmittelId: string;
 }
 
-export interface EintragAenderung extends MengenAngabe {
+/** Eine Zutat eines Rezept-Eintrags: mit `id` eine vorhandene, mit `lebensmittelId` eine neue. */
+export interface BestandteilAenderung extends MengenAngabe {
+  id?: string;
+  lebensmittelId?: string;
+}
+
+export interface EintragAenderung {
+  menge: number;
+  einheit: EintragEinheit;
+  groesse: Groesse | null;
   mahlzeit: Mahlzeit;
   /** Nur nötig, wenn für diese Einheit gerade ein Gewicht nachgetragen wurde. */
   umrechnung?: Umrechnung;
+  /** Nur bei Rezepten: die Zutaten für dieses eine Mal. Fehlt es, werden die Zutaten mit den Portionen umgerechnet. */
+  bestandteile?: BestandteilAenderung[];
 }
 
 /** Der kurze Satz bei Nährstoffen, die nie als Lücke zählen (Bauauftrag 4.2). */
@@ -98,7 +130,14 @@ export function eingabePruefenEintrag(roh: unknown): EintragEingabe {
   const e = roh as Record<string, unknown>;
   if (!datumErlaubt(e.datum)) throw new StarkFehler('UNGUELTIG', 'Das Datum stimmt nicht.');
   if (typeof e.lebensmittelId !== 'string') throw new StarkFehler('UNGUELTIG', 'Das Lebensmittel stimmt nicht.');
-  return { ...mengenAngabePruefen(e), datum: e.datum, mahlzeit: mahlzeitPruefen(e.mahlzeit), lebensmittelId: e.lebensmittelId };
+  const grund = { datum: e.datum, mahlzeit: mahlzeitPruefen(e.mahlzeit), lebensmittelId: e.lebensmittelId };
+  if (e.einheit === 'Portion') return { ...grund, menge: portionenPruefen(e.menge), einheit: 'Portion', groesse: null };
+  return { ...grund, ...mengenAngabePruefen(e) };
+}
+
+export function portionenPruefen(roh: unknown): number {
+  if (typeof roh !== 'number' || !Number.isFinite(roh) || roh <= 0 || roh > 200) throw new StarkFehler('UNGUELTIG', 'Bitte eine Portion über 0 eintragen.');
+  return roh;
 }
 
 function grammFuer(angabe: MengenAngabe, umrechnung: Umrechnung): number {
@@ -108,27 +147,102 @@ function grammFuer(angabe: MengenAngabe, umrechnung: Umrechnung): number {
   return gramm;
 }
 
-/** Hält den Stand des Lebensmittels fest. */
-export function eintragAnlegen(lm: Lebensmittel, eingabe: EintragEingabe, id: string, erstelltAm: string): TagebuchEintrag {
+/** Hält den Stand eines Lebensmittels in einer Menge fest. */
+export function bestandteilAnlegen(lm: Lebensmittel, angabe: MengenAngabe, id: string): Bestandteil {
   const faktor = lm.basis === 'ml' ? 1 / lm.umrechnung.dichte : 1;
   return {
     id,
-    datum: eingabe.datum,
-    mahlzeit: eingabe.mahlzeit,
-    art: 'lebensmittel',
     lebensmittelId: lm.id,
     name: lm.name,
     marke: lm.marke,
-    menge: eingabe.menge,
-    einheit: eingabe.einheit,
-    groesse: eingabe.groesse,
-    gramm: grammFuer(eingabe, lm.umrechnung),
+    menge: angabe.menge,
+    einheit: angabe.einheit,
+    groesse: angabe.groesse,
+    gramm: grammFuer(angabe, lm.umrechnung),
     umrechnung: umrechnungPruefen(lm.umrechnung),
     werteJe100g: werteJe100g(lm),
     spuren: lm.spuren,
     freierZuckerJe100g: lm.freierZuckerG === null ? null : lm.freierZuckerG * faktor,
+  };
+}
+
+export function eintragAnlegen(lm: Lebensmittel, eingabe: EintragEingabe, id: string, erstelltAm: string): TagebuchEintrag {
+  if (eingabe.einheit === 'Portion') throw new StarkFehler('UNGUELTIG', 'Die Einheit stimmt nicht.');
+  const angabe: MengenAngabe = { menge: eingabe.menge, einheit: eingabe.einheit, groesse: eingabe.groesse };
+  return { ...bestandteilAnlegen(lm, angabe, id), datum: eingabe.datum, mahlzeit: eingabe.mahlzeit, art: 'lebensmittel', erstelltAm };
+}
+
+/** Die Summe aller Zutaten, auf 100 g umgerechnet. Was bei einer Zutat fehlt, fehlt in der Summe nur bei ihr. */
+export function aggregat(bestandteile: readonly Bestandteil[]): { gramm: number; werteJe100g: Record<string, number>; freierZuckerJe100g: number | null } {
+  const gramm = bestandteile.reduce((summe, b) => summe + b.gramm, 0);
+  const mengen: Record<string, number> = {};
+  let zucker: number | null = null;
+  for (const b of bestandteile) {
+    for (const [code, je100] of Object.entries(b.werteJe100g)) mengen[code] = (mengen[code] ?? 0) + (je100 * b.gramm) / 100;
+    if (b.freierZuckerJe100g !== null) zucker = (zucker ?? 0) + (b.freierZuckerJe100g * b.gramm) / 100;
+  }
+  const aufHundert = (menge: number) => (gramm > 0 ? (menge / gramm) * 100 : 0);
+  const werteJe100g: Record<string, number> = {};
+  for (const [code, menge] of Object.entries(mengen)) werteJe100g[code] = aufHundert(menge);
+  return { gramm, werteJe100g, freierZuckerJe100g: zucker === null ? null : aufHundert(zucker) };
+}
+
+const skaliert = (b: Bestandteil, faktor: number): Bestandteil => ({ ...b, menge: b.menge * faktor, gramm: b.gramm * faktor });
+
+/** Ein Rezept im Tagebuch: Die Zutaten werden auf die gegessenen Portionen umgerechnet und festgehalten. */
+export function rezeptEintragAnlegen(
+  r: { rezeptId: string; name: string; portionen: number; bestandteile: readonly Bestandteil[] },
+  eingabe: EintragEingabe,
+  id: string,
+  erstelltAm: string,
+  neueId: () => string,
+): TagebuchEintrag {
+  const faktor = eingabe.menge / r.portionen;
+  const bestandteile = r.bestandteile.map((b) => ({ ...skaliert(b, faktor), id: neueId() }));
+  const summe = aggregat(bestandteile);
+  return {
+    id,
+    datum: eingabe.datum,
+    mahlzeit: eingabe.mahlzeit,
+    art: 'rezept',
+    lebensmittelId: r.rezeptId,
+    name: r.name,
+    marke: null,
+    menge: eingabe.menge,
+    einheit: 'Portion',
+    groesse: null,
+    gramm: summe.gramm,
+    umrechnung: umrechnungPruefen(GRUNDWERTE),
+    werteJe100g: summe.werteJe100g,
+    spuren: [],
+    freierZuckerJe100g: summe.freierZuckerJe100g,
+    rezept: { portionen: r.portionen, bestandteile, angepasst: false },
     erstelltAm,
   };
+}
+
+/** Portionen oder Zutaten eines Rezept-Eintrags ändern. Das Rezept selbst bleibt, wie es ist. */
+export function rezeptEintragAendern(eintrag: TagebuchEintrag, aenderung: { menge: number; mahlzeit: Mahlzeit; bestandteile?: readonly Bestandteil[] | undefined }): TagebuchEintrag {
+  const stand = eintrag.rezept;
+  if (!stand) throw new StarkFehler('UNGUELTIG', 'Der Eintrag stimmt nicht.');
+  const faktor = aenderung.menge / eintrag.menge;
+  const bestandteile = aenderung.bestandteile ? [...aenderung.bestandteile] : stand.bestandteile.map((b) => skaliert(b, faktor));
+  const summe = aggregat(bestandteile);
+  return {
+    ...eintrag,
+    menge: aenderung.menge,
+    mahlzeit: aenderung.mahlzeit,
+    gramm: summe.gramm,
+    werteJe100g: summe.werteJe100g,
+    freierZuckerJe100g: summe.freierZuckerJe100g,
+    rezept: { ...stand, bestandteile, angepasst: stand.angepasst || aenderung.bestandteile !== undefined },
+  };
+}
+
+/** Rechnet eine geänderte Menge bei einer festgehaltenen Zutat neu. */
+export function bestandteilMenge(b: Bestandteil, roh: Record<string, unknown>): Bestandteil {
+  const angabe = mengenAngabePruefen(roh);
+  return { ...b, ...angabe, gramm: grammFuer(angabe, b.umrechnung) };
 }
 
 /** Ändert Menge oder Mahlzeit. Die festgehaltenen Nährwerte bleiben. */
@@ -140,8 +254,9 @@ export function eintragAendern(eintrag: TagebuchEintrag, roh: unknown): Tagebuch
   return { ...eintrag, ...angabe, mahlzeit: mahlzeitPruefen(r.mahlzeit), umrechnung, gramm: grammFuer(angabe, umrechnung) };
 }
 
-/** „1 Stück (L) ≈ 60 g“, „2 EL ≈ 20 g“, „150 g“ */
-export function mengenText(e: MengenAngabe & { gramm: number }): string {
+/** „1 Stück (L) ≈ 60 g“, „2 EL ≈ 20 g“, „150 g“, „1,5 Portionen“ */
+export function mengenText(e: { menge: number; einheit: EintragEinheit; groesse: Groesse | null; gramm: number }): string {
+  if (e.einheit === 'Portion') return `${zahlText(e.menge, 2)} ${e.menge === 1 ? 'Portion' : 'Portionen'}`;
   const einheit = e.einheit === 'Stück' && e.groesse ? `Stück (${e.groesse})` : e.einheit;
   const grund = `${zahlText(e.menge, 2)} ${einheit}`;
   return istUngefaehr(e.einheit) ? `${grund} ≈ ${zahlText(e.gramm, e.gramm < 10 ? 1 : 0)} g` : grund;
@@ -169,12 +284,17 @@ export interface Tagessumme {
 export const EPA_DHA_CODE = 'EPA_DHA';
 export const FREIER_ZUCKER_CODE = 'FREIER_ZUCKER';
 
-export function tagessumme(eintraege: readonly TagebuchEintrag[]): Tagessumme {
+/** Was sich zusammenzählen lässt: ein Eintrag oder die Zutat eines Rezepts. */
+export type SummenPosten = Pick<Bestandteil, 'name' | 'gramm' | 'werteJe100g' | 'freierZuckerJe100g'> & { rezept?: Pick<RezeptStand, 'bestandteile'> };
+
+export function tagessumme(eintraege: readonly SummenPosten[]): Tagessumme {
   const werte: Record<string, { menge: number; fehltBei: string[] }> = {};
   for (const n of NAEHRSTOFFE) werte[n.code] = { menge: 0, fehltBei: [] };
   const zucker = { menge: 0, fehltBei: [] as string[] };
   const epaDha = { menge: 0, fehltBei: [] as string[] };
-  for (const e of eintraege) {
+  // Bei Rezepten zählen die einzelnen Zutaten: So bleibt sichtbar, bei welcher Zutat eine Angabe fehlt.
+  const posten = eintraege.flatMap((e): readonly SummenPosten[] => e.rezept?.bestandteile ?? [e]);
+  for (const e of posten) {
     for (const n of NAEHRSTOFFE) {
       const wert = eintragWert(e, n.code);
       if (wert === null) werte[n.code]!.fehltBei.push(e.name);

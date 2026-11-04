@@ -362,7 +362,7 @@ export function LebensmittelDetail({ id }: { id: string }) {
       <Rueckfrage
         offen={rueckfrage}
         titel={lm.herkunft === 'version' ? 'Auf das Original zurücksetzen?' : 'Lebensmittel löschen?'}
-        text={lm.herkunft === 'version' ? 'Deine Änderungen an den Werten gehen dabei verloren, das Original des BLS gilt wieder.' : `„${lm.name}“ wird gelöscht. Das lässt sich nur über eine Sicherung rückgängig machen.`}
+        text={lm.herkunft === 'version' ? 'Deine Änderungen an den Werten gehen dabei verloren, das Original des BLS gilt wieder.' : `„${lm.name}“ wird gelöscht. Das lässt sich nur über eine Sicherung rückgängig machen. Rezepte mit dieser Zutat zeigen danach einen Hinweis, und vergangene Tage im Tagebuch bleiben, wie sie sind.`}
         bestaetigen={lm.herkunft === 'version' ? 'Zurücksetzen' : 'Löschen'}
         onBestaetigen={entfernen}
         onAbbrechen={() => setRueckfrage(false)}

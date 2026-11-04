@@ -4,7 +4,7 @@
  * Reine Rechnung, damit sie sich mit erfundenen Daten prüfen lässt.
  */
 import type { Bedarf } from './bedarf';
-import { standardUmrechnung, type Groesse, type MengenEinheit, type Umrechnung } from './einheiten';
+import { standardUmrechnung, type EintragEinheit, type Groesse, type MengenEinheit, type Umrechnung } from './einheiten';
 import { mengeText, zahlText } from './format';
 import type { Herkunft, Werte } from './lebensmittel';
 import { naehrstoff, type GruppenId } from './naehrstoffe';
@@ -21,6 +21,8 @@ export interface VorschlagKandidat {
   werte: Werte;
   freierZuckerG: number | null;
   umrechnung?: Umrechnung;
+  /** Nur bei Rezepten: Gramm je Portion. Vorgeschlagen wird dann eine ganze oder halbe Portion. */
+  portionG?: number;
   /** Schon einmal gegessen? Vertrautes kommt etwas eher dran. */
   vertraut?: boolean;
 }
@@ -42,7 +44,7 @@ export interface Vorschlag {
   marke: string | null;
   herkunft: Herkunft;
   menge: number;
-  einheit: MengenEinheit;
+  einheit: EintragEinheit;
   groesse: Groesse | null;
   gramm: number;
   kcal: number;
@@ -278,6 +280,20 @@ export interface VorschlagOptionen {
   stueckware?: Stueckware;
 }
 
+function mengeFuerLebensmittel(k: VorschlagKandidat, passt: number, stueckware: Stueckware) {
+  const portion = typischePortionG(k.name, k.code);
+  const moeglich = Math.min(portion, passt);
+  if (moeglich < portion * MINDEST_ANTEIL) return null;
+  return mengeFuerVorschlag(moeglich, k.umrechnung ?? standardUmrechnung(k.name, k.code), stueckware);
+}
+
+/** Ein Rezept gibt es als ganze oder halbe Portion. */
+function mengeFuerRezept(portionG: number, passt: number): { menge: number; einheit: EintragEinheit; groesse: null; gramm: number } | null {
+  if (passt >= portionG) return { menge: 1, einheit: 'Portion', groesse: null, gramm: portionG };
+  if (passt >= portionG / 2) return { menge: 0.5, einheit: 'Portion', groesse: null, gramm: portionG / 2 };
+  return null;
+}
+
 export function vorschlagen(kandidaten: readonly VorschlagKandidat[], luecken: readonly Luecke[], grenzen: readonly Grenze[], optionen: VorschlagOptionen = {}): Vorschlag[] {
   const anzahl = optionen.anzahl ?? 4;
   const stueckware = optionen.stueckware ?? 'groesse';
@@ -287,12 +303,8 @@ export function vorschlagen(kandidaten: readonly VorschlagKandidat[], luecken: r
   const bewertet: Vorschlag[] = [];
   for (const k of kandidaten) {
     if (k.werte.ENERCC === undefined) continue; // Ohne Kalorien lässt sich die Grenze nicht einhalten.
-    const portion = typischePortionG(k.name, k.code);
     const passt = hoechstenGramm(k, grenzen);
-    const moeglich = Math.min(portion, passt);
-    if (moeglich < portion * MINDEST_ANTEIL) continue;
-    const u = k.umrechnung ?? standardUmrechnung(k.name, k.code);
-    const menge = mengeFuerVorschlag(moeglich, u, stueckware);
+    const menge = k.portionG ? mengeFuerRezept(k.portionG, passt) : mengeFuerLebensmittel(k, passt, stueckware);
     if (!menge || menge.gramm > passt) continue;
     const eigen = k.herkunft !== 'bls';
     const wirkung = wirkungFuer(k, menge.gramm, luecken);

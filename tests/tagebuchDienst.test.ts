@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { grundbestandOeffnen, type Grundbestand } from '../src/main/daten/bls';
 import { LebensmittelDienst } from '../src/main/daten/lebensmittelDienst';
+import { RezeptDienst } from '../src/main/daten/rezeptDienst';
 import { SqliteQuelle } from '../src/main/daten/sqlite';
 import { TagebuchDienst } from '../src/main/daten/tagebuchDienst';
 import { BLS_FASSUNG, BLS_SCHEMA } from '@shared/blsAufbau';
@@ -61,7 +62,7 @@ beforeEach(() => {
   zeit = 0;
   const uhr = () => new Date(Date.UTC(2026, 10, 4, 12, 0, zeit++)).toISOString();
   lebensmittel = new LebensmittelDienst(() => quelle, grund, () => {}, uhr);
-  tagebuch = new TagebuchDienst(() => quelle, lebensmittel, grund, () => 2026, uhr);
+  tagebuch = new TagebuchDienst(() => quelle, lebensmittel, new RezeptDienst(() => quelle, lebensmittel), grund, () => 2026, uhr);
 });
 
 afterEach(() => {

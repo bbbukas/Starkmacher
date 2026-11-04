@@ -10,6 +10,7 @@ import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import { grundbestandOeffnen } from './daten/bls';
 import { DatenDienst } from './daten/dienst';
 import { LebensmittelDienst } from './daten/lebensmittelDienst';
+import { RezeptDienst } from './daten/rezeptDienst';
 import { TagebuchDienst } from './daten/tagebuchDienst';
 import { Einstellungen } from './einstellungen';
 import { fotoEntfernen } from './fotos';
@@ -120,8 +121,9 @@ if (!app.requestSingleInstanceLock()) {
     // Der Grundbestand liegt im Programm (electron-builder.yml), beim Entwickeln im Projektordner.
     const grundbestand = grundbestandOeffnen(app.isPackaged ? join(process.resourcesPath, 'bls-4.0.sqlite') : join(app.getAppPath(), 'ressourcen/bls-4.0.sqlite'));
     const lebensmittel = new LebensmittelDienst(() => dienst.bereit(), grundbestand, (name) => fotoEntfernen(name, dienst.fotoOrdner));
-    const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, grundbestand);
-    ipcEinrichten(dienst, lebensmittel, tagebuch, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
+    const rezepte = new RezeptDienst(() => dienst.bereit(), lebensmittel, (name) => fotoEntfernen(name, dienst.fotoOrdner));
+    const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, rezepte, grundbestand);
+    ipcEinrichten(dienst, lebensmittel, rezepte, tagebuch, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
     menueEinrichten(() => hauptfenster);
 
     app.setAboutPanelOptions({

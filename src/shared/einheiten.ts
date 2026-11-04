@@ -7,6 +7,8 @@ import { StarkFehler } from './fehler';
 
 export type MengenEinheit = 'g' | 'kg' | 'ml' | 'l' | 'EL' | 'TL' | 'Prise' | 'Stück' | 'Scheibe' | 'Dose' | 'Becher' | 'Packung';
 export type Groesse = 'S' | 'M' | 'L';
+/** Im Tagebuch gibt es dazu die Portion eines Rezepts. */
+export type EintragEinheit = MengenEinheit | 'Portion';
 
 export const EINHEITEN: readonly { id: MengenEinheit; titel: string }[] = [
   { id: 'g', titel: 'g' },

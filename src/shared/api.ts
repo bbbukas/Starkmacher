@@ -6,6 +6,7 @@ import type { Umrechnung } from './einheiten';
 import type { FehlerCode } from './fehler';
 import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
 import type { Gewicht, Profil, Stand } from './profil';
+import type { Hashtag, RezeptAnfrage, RezeptAnsicht, RezeptEingabe, RezeptKurz, RezeptZutat, ZutatStand } from './rezepte';
 import type { EintragAenderung, EintragEingabe, TagebuchEintrag } from './tagebuch';
 import type { Vorschlag } from './vorschlaege';
 
@@ -85,6 +86,17 @@ export interface AehnlichesLebensmittel {
 }
 
 export interface StarkmacherApi {
+  rezepte: {
+    liste(anfrage: RezeptAnfrage): Promise<Antwort<RezeptKurz[]>>;
+    holen(id: string): Promise<Antwort<RezeptAnsicht | null>>;
+    speichern(eingabe: RezeptEingabe): Promise<Antwort<RezeptAnsicht>>;
+    loeschen(id: string): Promise<Antwort<null>>;
+    /** Nährwerte für das Formular, bevor das Rezept gespeichert ist. */
+    vorschau(zutaten: RezeptZutat[]): Promise<Antwort<ZutatStand[]>>;
+    hashtags(): Promise<Antwort<Hashtag[]>>;
+    hashtagSpeichern(hashtag: { id?: string; name: string; farbe?: string }): Promise<Antwort<Hashtag>>;
+    hashtagLoeschen(id: string): Promise<Antwort<null>>;
+  };
   tagebuch: {
     tag(datum: string): Promise<Antwort<TagAntwort>>;
     eintragen(eingabe: EintragEingabe): Promise<Antwort<TagebuchEintrag>>;

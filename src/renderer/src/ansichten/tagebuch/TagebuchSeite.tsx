@@ -83,7 +83,11 @@ function MahlzeitKarte({ id, titel, eintraege, onEintragen, onOeffnen }: { id: M
                 {e.name}
                 {e.marke && <span className="leise"> · {e.marke}</span>}
               </b>
-              <small>{mengenText(e)}</small>
+              <small>
+                {e.art === 'rezept' && <span className="art-chip">Rezept</span>}
+                {mengenText(e)}
+                {e.rezept?.angepasst && ' · heute angepasst'}
+              </small>
               <span className="kc">{k === null ? '–' : zahlText(k)}</span>
             </button>
           );
