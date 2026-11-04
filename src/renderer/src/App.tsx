@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { LoaderCircle, TriangleAlert } from 'lucide-react';
 import { api } from './api';
+import { EinkaufSeite } from './ansichten/einkauf/EinkaufSeite';
 import { EinstellungenSeite } from './ansichten/EinstellungenSeite';
 import { ErsterStart } from './ansichten/ErsterStart';
 import { LebensmittelBereich } from './ansichten/lebensmittel/LebensmittelBereich';
@@ -92,6 +93,7 @@ export function App() {
       {route.name === 'reiter' && route.reiter === 'tagebuch' && <TagebuchSeite datumImPfad={route.unter[0]} />}
       {route.name === 'reiter' && route.reiter === 'rezepte' && <RezepteBereich unter={route.unter} />}
       {route.name === 'reiter' && route.reiter === 'teller' && <TellerBereich unter={route.unter} />}
+      {route.name === 'reiter' && route.reiter === 'einkauf' && <EinkaufSeite />}
       {route.name === 'reiter' && route.reiter === 'verlauf' && <VerlaufSeite />}
       {route.name === 'bedarf' && <MeinBedarf />}
       {route.name === 'einstellungen' && <EinstellungenSeite />}

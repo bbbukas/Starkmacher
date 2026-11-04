@@ -2,11 +2,12 @@
  * Verbindet die Oberfläche (über src/preload) mit Datenbaustein und Sicherungen.
  * Alles, was von der Oberfläche kommt, wird hier oder im Datenbaustein geprüft.
  */
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import type { Aenderung, Antwort, FotoZweck, HandyEreignis, ProgrammInfo, SuchAnfrage } from '@shared/api';
 import { StarkFehler } from '@shared/fehler';
 import type { RezeptAnfrage } from '@shared/rezepte';
 import type { DatenDienst } from './daten/dienst';
+import type { EinkaufDienst } from './daten/einkaufDienst';
 import type { LebensmittelDienst } from './daten/lebensmittelDienst';
 import type { RezeptDienst } from './daten/rezeptDienst';
 import type { TagebuchDienst } from './daten/tagebuchDienst';
@@ -34,7 +35,7 @@ const HANDY_TITEL: Readonly<Record<FotoZweck, string>> = {
 
 const BILD_FILTER: Electron.FileFilter[] = [{ name: 'Bilder', extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'] }];
 
-export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, teller: TellerDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, fotos: FotoDienst, sehen: Sehen, handy: HandySeite, info: ProgrammInfo): void {
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, teller: TellerDienst, tagebuch: TagebuchDienst, einkauf: EinkaufDienst, sicherungen: Sicherungen, fotos: FotoDienst, sehen: Sehen, handy: HandySeite, info: ProgrammInfo): void {
   ipcMain.handle('fotos:waehlen', (e, zweck: unknown) =>
     alsAntwort(async () => {
       const wofuer = zweckPruefen(zweck);
@@ -74,6 +75,20 @@ export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDie
     }),
   );
   ipcMain.on('fotos:handySchliessen', () => handy.schliessen());
+
+  ipcMain.handle('einkauf:ansicht', () => alsAntwort(() => einkauf.ansicht()));
+  ipcMain.handle('einkauf:hinzufuegen', (_e, id: unknown) => alsAntwort(() => einkauf.hinzufuegen(id)));
+  ipcMain.handle('einkauf:anzahl', (_e, id: unknown, anzahl: unknown) => alsAntwort(() => einkauf.anzahlSetzen(id, anzahl)));
+  ipcMain.handle('einkauf:entfernen', (_e, id: unknown) => alsAntwort(() => einkauf.entfernen(id)));
+  ipcMain.handle('einkauf:abhaken', (_e, schluessel: unknown, ja: unknown) => alsAntwort(() => einkauf.abhaken(schluessel, ja)));
+  ipcMain.handle('einkauf:hakenEntfernen', () => alsAntwort(() => einkauf.hakenEntfernen()));
+  ipcMain.handle('einkauf:leeren', () => alsAntwort(() => einkauf.leeren()));
+  ipcMain.handle('einkauf:kopieren', () =>
+    alsAntwort(() => {
+      clipboard.writeText(einkauf.text());
+      return null;
+    }),
+  );
 
   ipcMain.handle('teller:liste', (_e, text: unknown) => alsAntwort(() => teller.liste(text)));
   ipcMain.handle('teller:holen', (_e, id: unknown) => alsAntwort(() => teller.holen(id)));

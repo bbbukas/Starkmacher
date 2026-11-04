@@ -10,6 +10,7 @@ import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import { grundbestandOeffnen } from './daten/bls';
 import { kopieOeffnen } from './daten/kopie';
 import { DatenDienst } from './daten/dienst';
+import { EinkaufDienst } from './daten/einkaufDienst';
 import { LebensmittelDienst } from './daten/lebensmittelDienst';
 import { RezeptDienst } from './daten/rezeptDienst';
 import { TagebuchDienst } from './daten/tagebuchDienst';
@@ -134,8 +135,9 @@ if (!app.requestSingleInstanceLock()) {
     const rezepte = new RezeptDienst(() => dienst.bereit(), lebensmittel, (name) => fotoEntfernen(name, dienst.fotoOrdner));
     const teller = new TellerDienst(() => dienst.bereit(), lebensmittel, rezepte);
     const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, rezepte, teller, grundbestand);
+    const einkauf = new EinkaufDienst(() => dienst.bereit(), lebensmittel);
     const fotos = new FotoDienst(sehen, () => dienst.fotoOrdner, lebensmittel, kopie);
-    ipcEinrichten(dienst, lebensmittel, rezepte, teller, tagebuch, sicherungen, fotos, sehen, handy, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
+    ipcEinrichten(dienst, lebensmittel, rezepte, teller, tagebuch, einkauf, sicherungen, fotos, sehen, handy, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
     menueEinrichten(() => hauptfenster);
 
     app.setAboutPanelOptions({

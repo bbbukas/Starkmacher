@@ -3,6 +3,7 @@
  * Schnittstelle. So lässt sich der Speicherort später austauschen, zum Beispiel
  * gegen eine Datenbank auf einem Server in der EU.
  */
+import type { EinkaufDaten } from '@shared/einkauf';
 import type { Umrechnung } from '@shared/einheiten';
 import type { LebensmittelEingabe } from '@shared/lebensmittel';
 import type { Hashtag, Rezept } from '@shared/rezepte';
@@ -45,6 +46,8 @@ export interface Datenquelle {
   tellerHolen(id: string): Teller | null;
   tellerSpeichern(teller: Teller): void;
   tellerLoeschen(id: string): void;
+  einkaufLaden(): EinkaufDaten;
+  einkaufSpeichern(daten: EinkaufDaten): void;
   /** Gibt es schon etwas, das sich zu sichern lohnt? */
   hatDaten(): boolean;
   /** Bringt die Datenbank auf den neuesten Aufbau. */

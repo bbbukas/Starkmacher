@@ -240,7 +240,7 @@ describe('Datenbank', () => {
     alt.migrieren();
     alt.speichern({ gewicht: { datum: '2026-11-01', kg: 70 } });
     const db = new DatabaseSync(datei);
-    db.exec('DROP TABLE teller; PRAGMA user_version = 4;');
+    db.exec('DROP TABLE einkaufsliste; DROP TABLE teller; PRAGMA user_version = 4;');
     db.close();
     alt.schliessen();
     const neu = SqliteQuelle.oeffnen(datei);

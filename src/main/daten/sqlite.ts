@@ -9,6 +9,7 @@
 import { chmodSync, existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { StarkFehler } from '@shared/fehler';
+import { LEERE_EINKAUFSLISTE, type EinkaufDaten } from '@shared/einkauf';
 import type { Umrechnung } from '@shared/einheiten';
 import { leeresProfil, PROFIL_ID, type Aktivitaet, type Geschlecht, type Gewicht, type Profil, type Stand, type Stueckware, type Tempo, type Ziel } from '@shared/profil';
 import type { Hashtag, HashtagFarbe, Rezept } from '@shared/rezepte';
@@ -88,6 +89,10 @@ const MIGRATIONEN: readonly string[] = [
      profil_id TEXT NOT NULL REFERENCES profile(id),
      daten TEXT NOT NULL,
      geaendert_am TEXT NOT NULL
+   );`,
+  `CREATE TABLE einkaufsliste (
+     profil_id TEXT PRIMARY KEY REFERENCES profile(id),
+     daten TEXT NOT NULL
    );`,
 ];
 
@@ -396,6 +401,18 @@ export class SqliteQuelle implements Datenquelle {
   tellerLoeschen(id: string): void {
     this.inTransaktion(() => {
       this.db.prepare('DELETE FROM teller WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
+    });
+  }
+
+  einkaufLaden(): EinkaufDaten {
+    const z = this.db.prepare('SELECT daten FROM einkaufsliste WHERE profil_id = ?').get(PROFIL_ID) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as EinkaufDaten) : LEERE_EINKAUFSLISTE;
+  }
+
+  einkaufSpeichern(daten: EinkaufDaten): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db.prepare('INSERT INTO einkaufsliste (profil_id, daten) VALUES (?, ?) ON CONFLICT (profil_id) DO UPDATE SET daten = excluded.daten').run(PROFIL_ID, JSON.stringify(daten));
     });
   }
 

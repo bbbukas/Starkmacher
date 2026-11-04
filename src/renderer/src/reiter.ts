@@ -7,6 +7,7 @@ export const REITER = [
   { id: 'teller', titel: 'Teller' },
   { id: 'rezepte', titel: 'Rezepte' },
   { id: 'lebensmittel', titel: 'Lebensmittel' },
+  { id: 'einkauf', titel: 'Einkauf' },
   { id: 'verlauf', titel: 'Verlauf' },
 ] as const;
 

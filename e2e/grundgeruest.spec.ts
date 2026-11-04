@@ -56,7 +56,7 @@ test('Erster Start führt durch „Mein Bedarf“, danach gibt es die Reiter', a
 
     // Danach die Reiter in der richtigen Reihenfolge, und das Tagebuch öffnet mit heute
     const reiter = seite.getByRole('navigation', { name: 'Bereiche' }).getByRole('link');
-    await expect(reiter).toHaveText(['Tagebuch', 'Teller', 'Rezepte', 'Lebensmittel', 'Verlauf']);
+    await expect(reiter).toHaveText(['Tagebuch', 'Teller', 'Rezepte', 'Lebensmittel', 'Einkauf', 'Verlauf']);
     await expect(reiter.first()).toHaveAttribute('aria-current', 'page');
     await expect(seite.locator('.tag h1')).toHaveText(/\d+\. \p{L}+$/u);
     await expect(seite.getByRole('link', { name: 'Mein Bedarf' })).toBeVisible();

@@ -293,7 +293,7 @@ describe('Datenbank', () => {
     const alt = SqliteQuelle.oeffnen(datei);
     alt.migrieren();
     const db = new DatabaseSync(datei);
-    db.exec('DROP TABLE teller; DROP TABLE rezepte; DROP TABLE hashtags; PRAGMA user_version = 3;');
+    db.exec('DROP TABLE einkaufsliste; DROP TABLE teller; DROP TABLE rezepte; DROP TABLE hashtags; PRAGMA user_version = 3;');
     db.close();
     alt.schliessen();
     const neu = SqliteQuelle.oeffnen(datei);

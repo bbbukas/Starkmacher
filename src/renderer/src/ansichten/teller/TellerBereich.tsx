@@ -8,6 +8,7 @@ import { mengenText } from '@shared/tagebuch';
 import { nachRollen, ROLLEN, tellerInhalt, tellerSumme, type PostenStand, type Rolle, type TellerKurz, type TellerPosten } from '@shared/teller';
 import { api } from '../../api';
 import { useDaten } from '../../daten/DatenKontext';
+import { AufDieListe } from '../../komponenten/AufDieListe';
 import { Dialog, Rueckfrage } from '../../komponenten/Dialog';
 import { InsTagebuchDialog } from '../../komponenten/InsTagebuchDialog';
 import { LebensmittelWahl } from '../../komponenten/LebensmittelWahl';
@@ -320,14 +321,12 @@ function TellerSeite({ id }: { id?: string }) {
       </a>
       <div className="kopf-reihe">
         <h1 className="seitentitel">{id ? name || 'Teller' : 'Neuer Teller'}</h1>
-        <button
-          type="button"
-          className="knopf knopf-akzent"
-          disabled={posten.length === 0}
-          onClick={() => setTagebuch(true)}
-        >
-          <BookPlus className="i" aria-hidden /> Ins Tagebuch
-        </button>
+        <div className="knopf-stapel">
+          {id && <AufDieListe id={id} />}
+          <button type="button" className="knopf knopf-akzent" disabled={posten.length === 0} onClick={() => setTagebuch(true)}>
+            <BookPlus className="i" aria-hidden /> Ins Tagebuch
+          </button>
+        </div>
       </div>
       {fehler && (
         <div className="hinweis hinweis-fehler" role="alert">

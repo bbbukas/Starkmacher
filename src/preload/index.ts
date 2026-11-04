@@ -6,6 +6,16 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { HandyEreignis, MenueBefehl, StarkmacherApi } from '@shared/api';
 
 const api: StarkmacherApi = {
+  einkauf: {
+    ansicht: () => ipcRenderer.invoke('einkauf:ansicht'),
+    hinzufuegen: (bezugId) => ipcRenderer.invoke('einkauf:hinzufuegen', bezugId),
+    anzahl: (bezugId, anzahl) => ipcRenderer.invoke('einkauf:anzahl', bezugId, anzahl),
+    entfernen: (bezugId) => ipcRenderer.invoke('einkauf:entfernen', bezugId),
+    abhaken: (schluessel, ja) => ipcRenderer.invoke('einkauf:abhaken', schluessel, ja),
+    hakenEntfernen: () => ipcRenderer.invoke('einkauf:hakenEntfernen'),
+    leeren: () => ipcRenderer.invoke('einkauf:leeren'),
+    kopieren: () => ipcRenderer.invoke('einkauf:kopieren'),
+  },
   teller: {
     liste: (text) => ipcRenderer.invoke('teller:liste', text),
     holen: (id) => ipcRenderer.invoke('teller:holen', id),

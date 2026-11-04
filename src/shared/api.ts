@@ -3,6 +3,7 @@
  * Mehr nicht: kein Dateizugriff, kein Netzwerk.
  */
 import type { KopieProdukt } from './barcode';
+import type { EinkaufAnsicht } from './einkauf';
 import type { Umrechnung } from './einheiten';
 import type { FehlerCode } from './fehler';
 import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
@@ -120,6 +121,18 @@ export interface AehnlichesLebensmittel {
 }
 
 export interface StarkmacherApi {
+  einkauf: {
+    ansicht(): Promise<Antwort<EinkaufAnsicht>>;
+    /** Steht es schon darauf, kommt noch einmal dieselbe Menge dazu. */
+    hinzufuegen(bezugId: string): Promise<Antwort<EinkaufAnsicht>>;
+    anzahl(bezugId: string, anzahl: number): Promise<Antwort<EinkaufAnsicht>>;
+    entfernen(bezugId: string): Promise<Antwort<EinkaufAnsicht>>;
+    abhaken(schluessel: string, ja: boolean): Promise<Antwort<EinkaufAnsicht>>;
+    hakenEntfernen(): Promise<Antwort<EinkaufAnsicht>>;
+    leeren(): Promise<Antwort<EinkaufAnsicht>>;
+    /** Legt, was noch fehlt, in die Zwischenablage. */
+    kopieren(): Promise<Antwort<null>>;
+  };
   teller: {
     liste(text: string): Promise<Antwort<TellerKurz[]>>;
     holen(id: string): Promise<Antwort<TellerAnsicht | null>>;

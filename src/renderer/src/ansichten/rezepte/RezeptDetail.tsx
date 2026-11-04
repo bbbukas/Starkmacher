@@ -4,6 +4,7 @@ import { zahlText } from '@shared/format';
 import { jePortion, rezeptSumme, zubereitungsSchritte, type RezeptAnsicht } from '@shared/rezepte';
 import { mengenText } from '@shared/tagebuch';
 import { api } from '../../api';
+import { AufDieListe } from '../../komponenten/AufDieListe';
 import { Rueckfrage } from '../../komponenten/Dialog';
 import { FotoBild } from '../../komponenten/FotoBild';
 import { InsTagebuchDialog } from '../../komponenten/InsTagebuchDialog';
@@ -80,9 +81,12 @@ export function RezeptDetail({ id }: { id: string }) {
             ))}
           </p>
         </div>
-        <button type="button" className="knopf knopf-akzent" onClick={() => setTagebuch(true)}>
-          <BookPlus className="i" aria-hidden /> Ins Tagebuch
-        </button>
+        <div className="knopf-stapel">
+          <AufDieListe id={id} />
+          <button type="button" className="knopf knopf-akzent" onClick={() => setTagebuch(true)}>
+            <BookPlus className="i" aria-hidden /> Ins Tagebuch
+          </button>
+        </div>
       </div>
 
       <div className="spalten spalten-detail">
