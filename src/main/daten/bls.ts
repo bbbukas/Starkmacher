@@ -5,6 +5,7 @@
 import { existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { BLS_FASSUNG } from '@shared/blsAufbau';
+import { HOECHSTWERTE, REFERENZWERTE } from '@shared/referenzwerte';
 
 export interface GrundEintrag {
   code: string;
@@ -24,14 +25,36 @@ export interface GrundLebensmittel {
   hinweise: readonly string[];
 }
 
+/** Ein Eintrag mit allen Werten, für die es ein Ziel oder eine Grenze gibt. */
+export interface VorschlagsEintrag extends GrundEintrag {
+  freierZuckerG: number | null;
+}
+
 export interface Grundbestand {
   /** Alle Einträge in Kurzform. Ändert sich nie, einmal gelesen bleibt die Liste im Speicher. */
   liste(): readonly GrundEintrag[];
+  /** Dasselbe mit den Werten für die Vorschläge im Tagebuch. Wird erst beim ersten Bedarf gelesen. */
+  vorschlagsListe(): readonly VorschlagsEintrag[];
   holen(code: string): GrundLebensmittel | null;
   schliessen(): void;
 }
 
 const LISTEN_CODES = ['ENERCC', 'FAT', 'FASAT', 'CHO', 'SUGAR', 'PROT625', 'NACL'] as const;
+const VORSCHLAGS_CODES: readonly string[] = [
+  ...new Set([
+    ...LISTEN_CODES,
+    ...REFERENZWERTE.map((r) => r.code),
+    ...HOECHSTWERTE.map((h) => h.code),
+    'NA',
+    'FAMS',
+    'FAPU',
+    'FAPUN3',
+    'F18:2CN6',
+    'F18:3CN3',
+    'F20:5CN3',
+    'F22:6CN3',
+  ]),
+];
 
 interface BlsZeile {
   code: string;
@@ -46,8 +69,25 @@ interface BlsZeile {
 
 class BlsDatei implements Grundbestand {
   private kurz: GrundEintrag[] | null = null;
+  private fuerVorschlaege: VorschlagsEintrag[] | null = null;
 
   constructor(private readonly db: DatabaseSync) {}
+
+  vorschlagsListe(): readonly VorschlagsEintrag[] {
+    if (!this.fuerVorschlaege) {
+      const zeilen = this.db.prepare('SELECT code, name, werte, freier_zucker_g FROM lebensmittel').all() as unknown as Pick<BlsZeile, 'code' | 'name' | 'werte' | 'freier_zucker_g'>[];
+      this.fuerVorschlaege = zeilen.map((z) => {
+        const alle = JSON.parse(z.werte) as Record<string, number>;
+        const werte: Record<string, number> = {};
+        for (const code of VORSCHLAGS_CODES) {
+          const wert = alle[code];
+          if (wert !== undefined) werte[code] = wert;
+        }
+        return { code: z.code, name: z.name, werte, freierZuckerG: z.freier_zucker_g };
+      });
+    }
+    return this.fuerVorschlaege;
+  }
 
   liste(): readonly GrundEintrag[] {
     if (!this.kurz) {
@@ -85,7 +125,7 @@ class BlsDatei implements Grundbestand {
   }
 }
 
-export const LEERER_GRUNDBESTAND: Grundbestand = { liste: () => [], holen: () => null, schliessen: () => {} };
+export const LEERER_GRUNDBESTAND: Grundbestand = { liste: () => [], vorschlagsListe: () => [], holen: () => null, schliessen: () => {} };
 
 /** Öffnet die Datei. Fehlt sie oder passt sie nicht, bleibt das Programm benutzbar, nur ohne BLS. */
 export function grundbestandOeffnen(datei: string): Grundbestand {

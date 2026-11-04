@@ -7,6 +7,7 @@ import type { Aenderung, Antwort, ProgrammInfo, SuchAnfrage } from '@shared/api'
 import { StarkFehler } from '@shared/fehler';
 import type { DatenDienst } from './daten/dienst';
 import type { LebensmittelDienst } from './daten/lebensmittelDienst';
+import type { TagebuchDienst } from './daten/tagebuchDienst';
 import { fotoEinlesen, fotoEntfernen, fotoLesen } from './fotos';
 import type { Sicherungen } from './sicherung';
 
@@ -20,7 +21,19 @@ async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>>
   }
 }
 
-export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+  ipcMain.handle('tagebuch:tag', (_e, datum: unknown) => alsAntwort(() => tagebuch.tag(datum)));
+  ipcMain.handle('tagebuch:eintragen', (_e, eingabe: unknown) => alsAntwort(() => tagebuch.eintragen(eingabe)));
+  ipcMain.handle('tagebuch:aendern', (_e, id: unknown, aenderung: unknown) => alsAntwort(() => tagebuch.aendern(id, aenderung)));
+  ipcMain.handle('tagebuch:loeschen', (_e, id: unknown) =>
+    alsAntwort(() => {
+      tagebuch.loeschen(id);
+      return null;
+    }),
+  );
+  ipcMain.handle('tagebuch:zuletzt', () => alsAntwort(() => tagebuch.zuletztGegessen()));
+  ipcMain.handle('tagebuch:vorschlaege', (_e, datum: unknown) => alsAntwort(() => tagebuch.vorschlaege(datum)));
+
   ipcMain.handle('lebensmittel:suchen', (_e, anfrage: SuchAnfrage) => alsAntwort(() => lebensmittel.suchen(anfrage)));
   ipcMain.handle('lebensmittel:holen', (_e, id: unknown) => alsAntwort(() => lebensmittel.holen(id)));
   ipcMain.handle('lebensmittel:speichern', (_e, eingabe: unknown) => alsAntwort(() => lebensmittel.speichern(eingabe)));

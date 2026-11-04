@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { StarkFehler } from '@shared/fehler';
 import type { Umrechnung } from '@shared/einheiten';
 import { leeresProfil, PROFIL_ID, type Aktivitaet, type Geschlecht, type Gewicht, type Profil, type Stand, type Stueckware, type Tempo, type Ziel } from '@shared/profil';
+import type { TagebuchEintrag } from '@shared/tagebuch';
 import type { Datenquelle, GespeichertesLebensmittel } from './datenquelle';
 
 /** Jeder Eintrag bringt die Datenbank eine Fassung weiter. Vorhandene Einträge nie ändern, nur neue anhängen. */
@@ -58,6 +59,16 @@ const MIGRATIONEN: readonly string[] = [
      zeit TEXT NOT NULL,
      PRIMARY KEY (profil_id, lebensmittel_id)
    );`,
+  `CREATE TABLE tagebuch (
+     id TEXT PRIMARY KEY,
+     profil_id TEXT NOT NULL REFERENCES profile(id),
+     datum TEXT NOT NULL,
+     lebensmittel_id TEXT NOT NULL,
+     erstellt_am TEXT NOT NULL,
+     daten TEXT NOT NULL
+   );
+   CREATE INDEX tagebuch_tag ON tagebuch (profil_id, datum);
+   CREATE INDEX tagebuch_neueste ON tagebuch (profil_id, erstellt_am);`,
 ];
 
 const BESCHAEDIGT_TEXT = 'Die Datendatei lässt sich nicht lesen.';
@@ -241,6 +252,41 @@ export class SqliteQuelle implements Datenquelle {
 
   zuletztVerwendet(anzahl: number): string[] {
     const zeilen = this.db.prepare('SELECT lebensmittel_id FROM zuletzt_verwendet WHERE profil_id = ? ORDER BY zeit DESC LIMIT ?').all(PROFIL_ID, anzahl) as unknown as { lebensmittel_id: string }[];
+    return zeilen.map((z) => z.lebensmittel_id);
+  }
+
+  tagebuchTag(datum: string): TagebuchEintrag[] {
+    const zeilen = this.db.prepare('SELECT daten FROM tagebuch WHERE profil_id = ? AND datum = ? ORDER BY erstellt_am, id').all(PROFIL_ID, datum) as unknown as { daten: string }[];
+    return zeilen.map((z) => JSON.parse(z.daten) as TagebuchEintrag);
+  }
+
+  tagebuchEintrag(id: string): TagebuchEintrag | null {
+    const z = this.db.prepare('SELECT daten FROM tagebuch WHERE profil_id = ? AND id = ?').get(PROFIL_ID, id) as { daten: string } | undefined;
+    return z ? (JSON.parse(z.daten) as TagebuchEintrag) : null;
+  }
+
+  tagebuchSpeichern(e: TagebuchEintrag): void {
+    this.inTransaktion(() => {
+      this.profilSicherstellen();
+      this.db
+        .prepare(
+          `INSERT INTO tagebuch (id, profil_id, datum, lebensmittel_id, erstellt_am, daten) VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET datum = excluded.datum, daten = excluded.daten`,
+        )
+        .run(e.id, PROFIL_ID, e.datum, e.lebensmittelId, e.erstelltAm, JSON.stringify(e));
+    });
+  }
+
+  tagebuchLoeschen(id: string): void {
+    this.inTransaktion(() => {
+      this.db.prepare('DELETE FROM tagebuch WHERE profil_id = ? AND id = ?').run(PROFIL_ID, id);
+    });
+  }
+
+  tagebuchZuletzt(anzahl: number): string[] {
+    const zeilen = this.db
+      .prepare('SELECT lebensmittel_id, MAX(erstellt_am) AS zuletzt FROM tagebuch WHERE profil_id = ? GROUP BY lebensmittel_id ORDER BY zuletzt DESC LIMIT ?')
+      .all(PROFIL_ID, anzahl) as unknown as { lebensmittel_id: string }[];
     return zeilen.map((z) => z.lebensmittel_id);
   }
 

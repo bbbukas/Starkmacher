@@ -9,6 +9,7 @@ import { grundbestandOeffnen } from '../src/main/daten/bls';
 import { standardUmrechnung } from '@shared/einheiten';
 import { naehrstoff } from '@shared/naehrstoffe';
 import { aehnlichste, sortierteTreffer } from '@shared/suche';
+import { ALLTAGS_NAMEN } from '@shared/vorschlaege';
 
 const DATEI = join(import.meta.dirname, '../ressourcen/bls-4.0.sqlite');
 
@@ -17,6 +18,13 @@ describe.runIf(existsSync(DATEI))('Der echte BLS', () => {
   const liste = grund.liste();
   const werte = (code: string) => grund.holen(code)!.werte;
 
+  it('die Alltagsliste für Vorschläge gibt es wirklich, und zu jedem Eintrag sind die Kalorien bekannt', () => {
+    const nachName = new Map(grund.vorschlagsListe().map((e) => [e.name, e]));
+    for (const name of ALLTAGS_NAMEN) {
+      expect(nachName.has(name), name).toBe(true);
+      expect(nachName.get(name)!.werte.ENERCC, name).toBeDefined();
+    }
+  });
   it('hat alle 7.140 Lebensmittel, und jeder Wert gehört zu einem bekannten Nährstoff', () => {
     expect(liste).toHaveLength(7140);
     for (const eintrag of liste.filter((_, i) => i % 40 === 0)) {

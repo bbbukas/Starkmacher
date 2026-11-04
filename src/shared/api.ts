@@ -6,6 +6,19 @@ import type { Umrechnung } from './einheiten';
 import type { FehlerCode } from './fehler';
 import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
 import type { Gewicht, Profil, Stand } from './profil';
+import type { EintragAenderung, EintragEingabe, TagebuchEintrag } from './tagebuch';
+import type { Vorschlag } from './vorschlaege';
+
+export interface TagAntwort {
+  datum: string;
+  eintraege: TagebuchEintrag[];
+}
+
+export interface VorschlagsAntwort {
+  vorschlaege: Vorschlag[];
+  /** Die Kalorien für heute sind ausgeschöpft: Dann passt kaum noch etwas, und das ist in Ordnung. */
+  kalorienErreicht: boolean;
+}
 
 export type Antwort<T> = { ok: true; wert: T } | { ok: false; code: FehlerCode; meldung: string };
 
@@ -72,6 +85,14 @@ export interface AehnlichesLebensmittel {
 }
 
 export interface StarkmacherApi {
+  tagebuch: {
+    tag(datum: string): Promise<Antwort<TagAntwort>>;
+    eintragen(eingabe: EintragEingabe): Promise<Antwort<TagebuchEintrag>>;
+    aendern(id: string, aenderung: EintragAenderung): Promise<Antwort<TagebuchEintrag>>;
+    loeschen(id: string): Promise<Antwort<null>>;
+    zuletzt(): Promise<Antwort<LebensmittelKurz[]>>;
+    vorschlaege(datum: string): Promise<Antwort<VorschlagsAntwort>>;
+  };
   lebensmittel: {
     suchen(anfrage: SuchAnfrage): Promise<Antwort<SuchErgebnis>>;
     holen(id: string): Promise<Antwort<Lebensmittel | null>>;

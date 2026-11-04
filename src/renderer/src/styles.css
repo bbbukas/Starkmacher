@@ -214,8 +214,60 @@ small { font-size: 0.82em; }
 .erster-start .sanft-hinweis { margin-top: 8px; }
 
 /* Tagebuch */
-.tag { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 14px; }
 .tag h1 { font-size: 27px; }
+.knopf-rund { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--linie); flex: none; }
+.knopf-rund:hover { box-shadow: inset 0 0 0 1.5px var(--akzent); }
+.knopf-klein { padding: 5px 12px; font-size: 13.5px; }
+.kalender { position: relative; display: inline-grid; }
+.kalender input { position: absolute; left: 0; bottom: 0; width: 34px; height: 34px; opacity: 0; pointer-events: none; }
+.motto { flex: 1 1 220px; color: var(--tinte2); font-size: 14.5px; min-width: 0; text-align: right; }
+.feld-karte.kcal .rest { margin-top: 2px; }
+.mahlzeit { background: var(--flaeche); border-radius: var(--rund); padding: 12px 14px; box-shadow: var(--schatten); }
+.mahlzeit header { display: flex; align-items: center; gap: 9px; }
+.mahlzeit h2 { margin: 0; font-size: 18px; }
+.mahlzeit .summe-klein { margin-left: auto; font-weight: 700; }
+.mahlzeit .bild { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--flaeche2); flex: none; }
+.mahlzeit .leer { margin: 8px 0 0; color: var(--tinte2); font-size: 14px; }
+.eintrag { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; width: 100%; padding: 8px 4px; border-top: 1px solid var(--linie); align-items: baseline; text-align: left; border-radius: 6px; }
+.eintrag:hover { background: var(--warm); }
+.mahlzeit header + .eintrag { margin-top: 9px; }
+.eintrag b { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.eintrag b .leise { font-weight: 500; }
+.eintrag small { grid-column: 1; color: var(--tinte2); }
+.eintrag .kc { grid-row: 1 / 3; grid-column: 2; align-self: center; font-weight: 600; }
+.dazu { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 11px; border-radius: 99px; font-weight: 700; font-size: 13.5px; color: var(--tinte2); }
+.dazu:hover { background: var(--warm); color: var(--tinte); }
+.fehlt { background: #f0fbf8; border-radius: var(--rund); padding: 16px; box-shadow: inset 0 0 0 2px #bfe9e0; }
+.fehlt h2 { margin: 0; }
+.fehlt .kurz { margin: 6px 0 10px; font-size: 15.5px; }
+.fehlt-hinweis { margin: 0 0 10px; font-size: 13px; color: var(--tinte2); }
+.fehlt-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13.5px; font-weight: 700; }
+.fehlt-wahl select { padding: 4px 8px; border: 1.5px solid #bfe9e0; border-radius: 10px; background: #fff; font: inherit; color: inherit; }
+.vorschlag-tag { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 12px; background: var(--flaeche); border-radius: 20px; margin-top: 8px; }
+.vorschlag-oben { min-width: 0; }
+.vorschlag-oben b { font-weight: 700; overflow-wrap: anywhere; }
+.woher { display: block; color: var(--tinte2); font-size: 12.5px; }
+.wirkung { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.wirkung span { padding: 1px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--farbe) 72%, #000); background: color-mix(in srgb, var(--farbe) 14%, #fff); }
+.eintragen { grid-column: 2; grid-row: 1 / 3; padding: 7px 14px; font-size: 13.5px; }
+.zeile { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--farbe) 16%, #fff); font-size: 13.5px; }
+.zeile .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.zeile .menge { text-align: right; font-weight: 700; white-space: nowrap; }
+.zeile .balken { grid-column: 1 / -1; margin-top: 2px; }
+.zeile .lage { grid-column: 1 / -1; font-size: 12.5px; color: var(--tinte2); }
+.zeile .lage.gut { color: #0a7f70; font-weight: 800; }
+.zeile-fehlt { grid-column: 1 / -1; font-size: 11.5px; color: var(--tinte2); }
+.balken-mehr > i { background: repeating-linear-gradient(135deg, var(--farbe) 0 6px, color-mix(in srgb, var(--farbe) 55%, #fff) 6px 12px); }
+.stufe-ueber .lage { font-weight: 700; color: #8a5a12; }
+.weitere { margin-top: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 700; color: var(--tinte2); }
+.weitere:hover { background: var(--warm); color: var(--tinte); }
+.treffer-knopf { width: 100%; text-align: left; grid-template-columns: minmax(0, 1fr) auto auto; }
+.dialog-liste { max-height: 340px; overflow-y: auto; }
+.dialog-zwischen { margin: 4px 0; }
+.eintrag-name { font-size: 16px; }
+.eintrag-vorschau { margin: 0; padding: 8px 12px; border-radius: var(--rund-klein); background: var(--warm); font-size: 14px; }
+.knopf-links { margin-right: auto; }
 .heute { font-size: 13px; font-weight: 800; background: var(--zweit); color: #fff; border-radius: 99px; padding: 3px 10px; }
 .summe { display: grid; grid-template-columns: minmax(0, 300px) repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .feld-karte { display: flex; flex-direction: column; justify-content: center; background: var(--flaeche); border-radius: var(--rund); padding: 14px 16px; box-shadow: var(--schatten); min-width: 0; }

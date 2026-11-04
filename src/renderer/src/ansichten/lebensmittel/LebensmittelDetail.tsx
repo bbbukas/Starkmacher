@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ChevronDown, LoaderCircle, Pencil, RotateCcw, Scale, Trash2 } from 'lucide-react';
 import type { Bedarf } from '@shared/bedarf';
-import { EINHEITEN, feldFuerEinheit, grammJeEinheit, inGramm, istUngefaehr, type Groesse, type MengenEinheit, type Umrechnung } from '@shared/einheiten';
+import { inGramm, istUngefaehr, type MengenEinheit, type Umrechnung } from '@shared/einheiten';
 import { mengeText, zahlText } from '@shared/format';
 import {
   anteilAmBedarf,
@@ -18,7 +18,7 @@ import { EPA_DHA_MINIMUM_MG } from '@shared/referenzwerte';
 import { api } from '../../api';
 import { useDaten } from '../../daten/DatenKontext';
 import { Rueckfrage } from '../../komponenten/Dialog';
-import { ZahlFeld } from '../../komponenten/Felder';
+import { Mengenwahl, startMenge, type Mengenstand } from '../../komponenten/Mengenwahl';
 import { useMeldungen } from '../../komponenten/Meldungen';
 import { Teller } from '../../komponenten/Teller';
 import { gehe, pfade } from '../../router';
@@ -98,73 +98,6 @@ function ExtraZeile(props: { name: string; hinweis: string; je100: string; jeMen
   );
 }
 
-function Mengenwahl(props: {
-  lm: Lebensmittel;
-  menge: number | null;
-  einheit: MengenEinheit;
-  groesse: Groesse;
-  mitGroessen: boolean;
-  onMenge(m: number | null): void;
-  onEinheit(e: MengenEinheit): void;
-  onGroesse(g: Groesse): void;
-  onUmrechnung(u: Umrechnung): void;
-}) {
-  const { lm, menge, einheit, groesse, mitGroessen } = props;
-  const u = lm.umrechnung;
-  const [neu, setNeu] = useState<number | null>(null);
-  const feld = feldFuerEinheit(einheit);
-  const unbekannt = grammJeEinheit(einheit, u, groesse) === null;
-  const einheiten = EINHEITEN.filter((e) => e.id !== 'Stück' || mitGroessen || !u.groessen);
-  return (
-    <div className="mengenwahl">
-      <div className="mengenwahl-reihe">
-        <ZahlFeld label="Menge" wert={menge} onWert={props.onMenge} istErlaubt={(z) => z > 0 && z <= 100000} fehlerText="Bitte eine Menge über 0 eintragen." leerErlaubt stellen={2} />
-        <div className="feld">
-          <label htmlFor="einheit">Einheit</label>
-          <select id="einheit" value={einheit} onChange={(e) => props.onEinheit(e.target.value as MengenEinheit)}>
-            {einheiten.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.titel}
-              </option>
-            ))}
-          </select>
-        </div>
-        {einheit === 'Stück' && u.groessen && (
-          <div className="feld">
-            <span className="feld-titel">Größe</span>
-            <div className="filter" role="radiogroup" aria-label="Größe">
-              {(['S', 'M', 'L'] as const).map((g) => (
-                <label key={g} className={`filter-knopf${groesse === g ? ' gewaehlt' : ''}`} title={`${g}: etwa ${u.groessen![g]} g ohne Schale`}>
-                  <input type="radio" name="groesse" checked={groesse === g} onChange={() => props.onGroesse(g)} />
-                  {g}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      {unbekannt && feld && (
-        <div className="nachfrage">
-          <ZahlFeld
-            label={`Wie viel wiegt 1 ${einheit}?`}
-            einheit="g"
-            wert={neu}
-            onWert={setNeu}
-            istErlaubt={(z) => z > 0 && z <= 100000}
-            fehlerText="Bitte ein Gewicht eintragen."
-            leerErlaubt
-            hilfe={einheit === 'Dose' ? 'Füllmenge oder Abtropfgewicht steht auf der Packung.' : 'Gilt ab jetzt für dieses Lebensmittel.'}
-            stellen={1}
-          />
-          <button type="button" className="knopf knopf-linie" disabled={neu === null} onClick={() => neu !== null && props.onUmrechnung({ ...u, [feld]: neu })}>
-            Merken
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Mengenangabe({ gramm, einheit, menge }: { gramm: number | null; einheit: MengenEinheit; menge: number | null }) {
   if (menge === null || gramm === null) return null;
   if (!istUngefaehr(einheit)) return null;
@@ -205,9 +138,8 @@ export function LebensmittelDetail({ id }: { id: string }) {
   const { zeigen } = useMeldungen();
   const [lm, setLm] = useState<Lebensmittel | null>(null);
   const [fehlt, setFehlt] = useState(false);
-  const [menge, setMenge] = useState<number | null>(100);
-  const [einheit, setEinheit] = useState<MengenEinheit>('g');
-  const [groesse, setGroesse] = useState<Groesse>('M');
+  const [mengen, setMengen] = useState<Mengenstand>({ menge: 100, einheit: 'g', groesse: 'M' });
+  const { menge, einheit, groesse } = mengen;
   const [rueckfrage, setRueckfrage] = useState(false);
   const [umrechnungOffen, setUmrechnungOffen] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
@@ -229,13 +161,7 @@ export function LebensmittelDetail({ id }: { id: string }) {
       }
       setLm(antwort.wert);
       api.lebensmittel.verwendet(id);
-      // Eier denkt man in Stück, Flüssiges mit Angabe je 100 ml in Millilitern.
-      if (antwort.wert.umrechnung.groessen && mitGroessen) {
-        setEinheit('Stück');
-        setMenge(1);
-      } else if (antwort.wert.basis === 'ml') {
-        setEinheit('ml');
-      }
+      setMengen(startMenge(antwort.wert.umrechnung, antwort.wert.basis, mitGroessen));
       if (antwort.wert.foto) void api.lebensmittel.fotoLesen(antwort.wert.foto).then((f) => !abgebrochen && f.ok && setFoto(f.wert));
     });
     return () => {
@@ -324,17 +250,7 @@ export function LebensmittelDetail({ id }: { id: string }) {
         <div className="stapel">
           <section className="karte">
             <h2>Wie viel?</h2>
-            <Mengenwahl
-              lm={lm}
-              menge={menge}
-              einheit={einheit}
-              groesse={groesse}
-              mitGroessen={mitGroessen}
-              onMenge={setMenge}
-              onEinheit={setEinheit}
-              onGroesse={setGroesse}
-              onUmrechnung={umrechnungSetzen}
-            />
+            <Mengenwahl umrechnung={lm.umrechnung} stand={mengen} mitGroessen={mitGroessen} onStand={setMengen} onUmrechnung={umrechnungSetzen} />
             <Mengenangabe gramm={gramm} einheit={einheit} menge={menge} />
             {gramm !== null && <Oberseite lm={lm} gramm={g} bedarf={bedarf} />}
           </section>

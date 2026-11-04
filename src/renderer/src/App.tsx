@@ -6,6 +6,7 @@ import { ErsterStart } from './ansichten/ErsterStart';
 import { LebensmittelBereich } from './ansichten/lebensmittel/LebensmittelBereich';
 import { MeinBedarf } from './ansichten/MeinBedarf';
 import { ReiterSeite } from './ansichten/ReiterSeite';
+import { TagebuchSeite } from './ansichten/tagebuch/TagebuchSeite';
 import { useDaten } from './daten/DatenKontext';
 import { Kopfzeile } from './komponenten/Kopfzeile';
 import { useMeldungen } from './komponenten/Meldungen';
@@ -86,7 +87,8 @@ export function App() {
     <>
       <Kopfzeile route={route} />
       {route.name === 'reiter' && route.reiter === 'lebensmittel' && <LebensmittelBereich unter={route.unter} />}
-      {route.name === 'reiter' && route.reiter !== 'lebensmittel' && <ReiterSeite key={route.reiter} id={route.reiter} />}
+      {route.name === 'reiter' && route.reiter === 'tagebuch' && <TagebuchSeite datumImPfad={route.unter[0]} />}
+      {route.name === 'reiter' && route.reiter !== 'lebensmittel' && route.reiter !== 'tagebuch' && <ReiterSeite key={route.reiter} id={route.reiter} />}
       {route.name === 'bedarf' && <MeinBedarf />}
       {route.name === 'einstellungen' && <EinstellungenSeite />}
     </>
