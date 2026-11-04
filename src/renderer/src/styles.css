@@ -311,6 +311,40 @@ small { font-size: 0.82em; }
 
 /* Lebensmittel */
 .seite-mittel { max-width: 860px; }
+.seite-breit { max-width: 1160px; }
+.pruefseite { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.pruef-spalte { position: sticky; top: 76px; display: grid; gap: 10px; max-height: calc(100vh - 92px); overflow-y: auto; }
+.pruef-foto { display: block; width: 100%; border-radius: var(--rund-klein); box-shadow: var(--schatten); background: #fff; }
+.pruef-hinweis { margin-bottom: 12px; }
+.pruef-hinweis.zweifelnd, .wert-zweifel .feld input { background: #fff6e0; }
+.pruef-hinweis.zweifelnd { box-shadow: inset 0 0 0 1.5px #f0d596; }
+.wert-zweifel .feld input { box-shadow: inset 0 0 0 1.5px #e7bd5e; }
+.wert-zweifel .feld-hilfe { color: #8a5a12; }
+.portion-hinweis { display: grid; gap: 8px; margin-bottom: 4px; }
+.portion-hinweis p { margin: 0; }
+.foto-eingang { display: grid; justify-items: center; gap: 12px; padding: 34px 18px; border: 2px dashed #e6bfae; border-radius: var(--rund); background: var(--flaeche); text-align: center; }
+.foto-eingang.drueber { background: #f0fbf8; border-color: #5cc4b1; }
+.foto-eingang.klein { padding: 10px; gap: 8px; }
+.foto-eingang-text { margin: 0; font-size: 17px; font-weight: 700; }
+.foto-eingang-knoepfe { justify-content: center; }
+.foto-liest { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--tinte2); }
+.barcode-tippen { margin: 16px 0 10px; }
+.barcode-tippen .feld-zeile { display: flex; gap: 8px; }
+.barcode-tippen input { flex: 1; min-width: 0; }
+.qr-code { display: block; width: min(260px, 70vw); height: auto; margin: 0 auto; border-radius: 10px; box-shadow: inset 0 0 0 1px #eadcd4; }
+.handy-fenster { justify-items: stretch; }
+.handy-schritte { margin: 0; padding-left: 22px; }
+.handy-schritte li { margin: 0 0 4px; }
+.handy-adresse { overflow-wrap: anywhere; margin: 0; }
+.zutaten-offen { display: grid; gap: 8px; }
+.zutat-offen { display: grid; gap: 8px; padding: 10px 12px; border-radius: var(--rund-klein); background: #fff6e0; box-shadow: inset 0 0 0 1.5px #f0d596; }
+.zutat-offen-text { display: grid; gap: 2px; }
+.zutat-offen-text small { color: #8a5a12; }
+.zutat-offen .knopfreihe { align-items: center; }
+.zutat-zeile.zutat-unklar { background: #fff6e0; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #f0d596; padding: 6px 8px; }
+.zutat-foto, .zutat-grund { display: block; font-size: 12px; color: var(--tinte2); }
+.zutat-grund { color: #8a5a12; }
+.zutat-wahl { display: block; width: 100%; padding: 3px 6px; border: 1.5px solid var(--rand, #e6d8cf); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; color: inherit; }
 .kopf-reihe { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-bottom: 12px; }
 .kopf-reihe .seitentitel { margin-bottom: 0; }
 .unter-titel { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0 0; }
@@ -506,6 +540,8 @@ small { font-size: 0.82em; }
   .treffer .marke-klein { grid-row: 2; justify-self: start; }
   .treffer-werte { grid-column: 2; grid-row: 1 / span 2; }
   .pfeil-rechts { display: none; }
+  .pruefseite { grid-template-columns: minmax(0, 1fr); }
+  .pruef-spalte { position: static; max-height: none; }
   .zutat-zeile { grid-template-columns: minmax(0, 1fr) auto auto; }
   .zutat-zeile .zutat-menge { grid-column: 1 / -1; }
   .seitentitel { font-size: 25px; }

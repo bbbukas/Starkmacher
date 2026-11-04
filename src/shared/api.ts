@@ -2,14 +2,43 @@
  * Was die Oberfläche über window.starkmacher (src/preload) erreichen kann.
  * Mehr nicht: kein Dateizugriff, kein Netzwerk.
  */
+import type { KopieProdukt } from './barcode';
 import type { Umrechnung } from './einheiten';
 import type { FehlerCode } from './fehler';
 import type { Lebensmittel, LebensmittelEingabe, LebensmittelKurz, Schaetzung, SuchFilter, Werte } from './lebensmittel';
+import type { GeleseneTabelle } from './naehrwertFoto';
 import type { Gewicht, Profil, Stand } from './profil';
+import type { GeleseneZutat, GelesenesRezept } from './rezeptFoto';
 import type { Hashtag, RezeptAnfrage, RezeptAnsicht, RezeptEingabe, RezeptKurz, RezeptZutat, ZutatStand } from './rezepte';
 import type { EintragAenderung, EintragEingabe, Mahlzeit, TagebuchEintrag } from './tagebuch';
 import type { PostenStand, TellerAnsicht, TellerEingabe, TellerKurz, TellerPosten } from './teller';
 import type { Vorschlag } from './vorschlaege';
+
+export type FotoZweck = 'lebensmittel' | 'rezept';
+
+export type BarcodeTreffer =
+  /** Das hat Lukas schon einmal gespeichert. */
+  | { art: 'eigen'; code: string; id: string; name: string }
+  | { art: 'kopie'; code: string; produkt: KopieProdukt }
+  | { art: 'keiner'; code: string; kopieDa: boolean };
+
+/** Eine Zutat vom Foto mit dem vorgeschlagenen Eintrag und den Alternativen. */
+export interface ZutatVorschlag extends GeleseneZutat {
+  lebensmittelId: string | null;
+  lebensmittelName: string | null;
+  alternativen: { id: string; name: string }[];
+}
+
+export type FotoErgebnis =
+  | { zweck: 'lebensmittel'; foto: string; tabelle: GeleseneTabelle | null; barcode: BarcodeTreffer | null }
+  | { zweck: 'rezept'; foto: string; rezept: Omit<GelesenesRezept, 'zutaten'> & { zutaten: ZutatVorschlag[] } };
+
+export type HandyEreignis = { art: 'foto'; ergebnis: FotoErgebnis } | { art: 'fehler'; meldung: string } | { art: 'ende' };
+
+export interface HandyVerbindung {
+  /** Die Einmal-Adresse für den QR-Code. */
+  adresse: string;
+}
 
 export interface TagAntwort {
   datum: string;
@@ -107,6 +136,17 @@ export interface StarkmacherApi {
     hashtags(): Promise<Antwort<Hashtag[]>>;
     hashtagSpeichern(hashtag: { id?: string; name: string; farbe?: string }): Promise<Antwort<Hashtag>>;
     hashtagLoeschen(id: string): Promise<Antwort<null>>;
+  };
+  /** Fotos auswerten: gewählt, hineingezogen oder vom Handy. Das Ergebnis geht immer auf eine Prüfseite. */
+  fotos: {
+    /** Null: abgebrochen. */
+    waehlen(zweck: FotoZweck): Promise<Antwort<FotoErgebnis | null>>;
+    einlesen(daten: Uint8Array, zweck: FotoZweck): Promise<Antwort<FotoErgebnis>>;
+    barcode(code: string): Promise<Antwort<BarcodeTreffer>>;
+    handyOeffnen(zweck: FotoZweck): Promise<Antwort<HandyVerbindung>>;
+    handySchliessen(): void;
+    /** Ein Foto vom Handy ist da, oder die Verbindung hat sich von selbst geschlossen. */
+    beiHandy(rueckruf: (ereignis: HandyEreignis) => void): () => void;
   };
   tagebuch: {
     tag(datum: string): Promise<Antwort<TagAntwort>>;

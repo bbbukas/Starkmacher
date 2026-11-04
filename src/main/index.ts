@@ -8,15 +8,19 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, session } from 'electron';
 import { grundbestandOeffnen } from './daten/bls';
+import { kopieOeffnen } from './daten/kopie';
 import { DatenDienst } from './daten/dienst';
 import { LebensmittelDienst } from './daten/lebensmittelDienst';
 import { RezeptDienst } from './daten/rezeptDienst';
 import { TagebuchDienst } from './daten/tagebuchDienst';
 import { TellerDienst } from './daten/tellerDienst';
 import { Einstellungen } from './einstellungen';
+import { FotoDienst } from './fotoDienst';
 import { fotoEntfernen } from './fotos';
+import { HandySeite } from './handy';
 import { ipcEinrichten } from './ipc';
 import { menueEinrichten } from './menue';
+import { sehenOeffnen } from './sehen';
 import { Sicherungen } from './sicherung';
 
 // Für die automatischen Tests ein eigener, leerer Datenordner. Beim Entwickeln nie die echten Daten.
@@ -120,27 +124,35 @@ if (!app.requestSingleInstanceLock()) {
     await sicherungen.erstellen().catch((fehler) => console.error('[starkmacher] Start-Sicherung fehlgeschlagen', fehler));
     dienst.migrieren();
     // Der Grundbestand liegt im Programm (electron-builder.yml), beim Entwickeln im Projektordner.
-    const grundbestand = grundbestandOeffnen(app.isPackaged ? join(process.resourcesPath, 'bls-4.0.sqlite') : join(app.getAppPath(), 'ressourcen/bls-4.0.sqlite'));
+    const ressource = (name: string) => (app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), 'ressourcen', name));
+    const grundbestand = grundbestandOeffnen(ressource('bls-4.0.sqlite'));
+    // STARKMACHER_KOPIE: Die Klick-Tests nehmen eine erfundene Kopie, damit sie nicht vom Stand von Open Food Facts abhängen.
+    const kopie = kopieOeffnen(process.env.STARKMACHER_KOPIE ?? ressource('openfoodfacts-de.sqlite'));
+    const sehen = sehenOeffnen(ressource('starkmacher-sehen'));
+    const handy = new HandySeite();
     const lebensmittel = new LebensmittelDienst(() => dienst.bereit(), grundbestand, (name) => fotoEntfernen(name, dienst.fotoOrdner));
     const rezepte = new RezeptDienst(() => dienst.bereit(), lebensmittel, (name) => fotoEntfernen(name, dienst.fotoOrdner));
     const teller = new TellerDienst(() => dienst.bereit(), lebensmittel, rezepte);
     const tagebuch = new TagebuchDienst(() => dienst.bereit(), lebensmittel, rezepte, teller, grundbestand);
-    ipcEinrichten(dienst, lebensmittel, rezepte, teller, tagebuch, sicherungen, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
+    const fotos = new FotoDienst(sehen, () => dienst.fotoOrdner, lebensmittel, kopie);
+    ipcEinrichten(dienst, lebensmittel, rezepte, teller, tagebuch, sicherungen, fotos, sehen, handy, { version: app.getVersion(), datenOrdner: ordner, entwicklung });
     menueEinrichten(() => hauptfenster);
 
     app.setAboutPanelOptions({
       applicationName: 'Starkmacher',
       applicationVersion: app.getVersion(),
       copyright: 'Lukas',
-      credits: 'Schriften: Fraunces und Nunito (SIL Open Font License). Symbole: Lucide (ISC-Lizenz).',
+      credits: 'Schriften: Fraunces und Nunito (SIL Open Font License). Symbole: Lucide (ISC-Lizenz). QR-Code: qrcode-generator (MIT-Lizenz). Barcodes: Open Food Facts (ODbL).',
     });
     // Beim Entwickeln trägt Electron sein eigenes Symbol – dann unseres zeigen.
     const symbol = join(app.getAppPath(), 'build/icon.png');
     if (entwicklung && process.platform === 'darwin' && existsSync(symbol)) app.dock?.setIcon(symbol);
 
     app.on('before-quit', () => {
+      handy.schliessen();
       dienst.schliessen();
       grundbestand.schliessen();
+      kopie.schliessen();
     });
     fensterOeffnen();
   });

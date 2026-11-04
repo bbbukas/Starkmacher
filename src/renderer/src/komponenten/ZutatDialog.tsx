@@ -22,7 +22,7 @@ export interface GewaehlteZutat {
 }
 
 /** Eine Zutat wählen und ihre Menge festlegen. Mit `start` öffnet das Fenster gleich bei der Menge. */
-export function ZutatDialog(props: { offen: boolean; titel: string; start?: { lebensmittelId: string; menge: number; einheit: MengenEinheit; groesse: Groesse | null } | null; onSchliessen(): void; onFertig(zutat: GewaehlteZutat): void }) {
+export function ZutatDialog(props: { offen: boolean; titel: string; start?: { lebensmittelId: string; menge: number; einheit: MengenEinheit; groesse: Groesse | null } | null; suchText?: string; onSchliessen(): void; onFertig(zutat: GewaehlteZutat): void }) {
   const { offen, start } = props;
   const { stand } = useDaten();
   const { zeigen } = useMeldungen();
@@ -106,7 +106,7 @@ export function ZutatDialog(props: { offen: boolean; titel: string; start?: { le
           )}
         </div>
       ) : (
-        <LebensmittelWahl onWahl={(id) => waehlen(id)} />
+        <LebensmittelWahl {...(props.suchText ? { startText: props.suchText } : {})} onWahl={(id) => waehlen(id)} />
       )}
     </Dialog>
   );

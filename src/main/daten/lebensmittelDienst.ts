@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AehnlichesLebensmittel, SuchAnfrage, SuchErgebnis } from '@shared/api';
 import { standardUmrechnung, umrechnungPruefen, type Umrechnung } from '@shared/einheiten';
+import { barcodeSchluessel } from '@shared/barcode';
 import { StarkFehler } from '@shared/fehler';
 import { freierZuckerG } from '@shared/freierZucker';
 import {
@@ -92,6 +93,22 @@ export class LebensmittelDienst {
     return { zuletzt: [], treffer: alle.slice(0, TREFFER_GRENZE), gesamt: alle.length, grundbestandDa: this.grund.liste().length > 0 };
   }
 
+  /** Alles, was sich als Zutat wählen lässt: Eine persönliche Version ersetzt ihr Original. */
+  bestandKurz(): LebensmittelKurz[] {
+    const gespeichert = this.quelle().eigeneListe();
+    const versionen = new Set(gespeichert.filter((e) => istBlsId(e.id)).map((e) => e.id));
+    return [...gespeichert.map((e) => this.eigeneKurz(e)), ...this.blsListe().filter((k) => !versionen.has(k.id))];
+  }
+
+  /** Das eigene Lebensmittel mit diesem Barcode, null: keins. */
+  nachBarcode(code: string): Lebensmittel | null {
+    const schluessel = barcodeSchluessel(code);
+    const eintrag = this.quelle()
+      .eigeneListe()
+      .find((e) => e.barcode && barcodeSchluessel(e.barcode) === schluessel);
+    return eintrag ? this.holen(eintrag.id) : null;
+  }
+
   holen(id: unknown): Lebensmittel | null {
     if (typeof id !== 'string') throw new StarkFehler('UNGUELTIG', 'Das Lebensmittel stimmt nicht.');
     const quelle = this.quelle();
@@ -152,6 +169,7 @@ export class LebensmittelDienst {
       nurNatuerlicherZucker: e.nurNatuerlicherZucker,
       packung: e.packung,
       foto: e.foto,
+      barcode: e.barcode ?? null,
       hinweise: [],
       anmerkung: original?.anmerkung ?? null,
       umrechnung: { ...umrechnung, packung },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Tags, X } from 'lucide-react';
+import { Plus, Search, Tags, X, Camera } from 'lucide-react';
 import { zahlText } from '@shared/format';
 import type { Hashtag, RezeptKurz } from '@shared/rezepte';
 import { api } from '../../api';
@@ -70,9 +70,14 @@ export function RezepteListe() {
     <main className="seite seite-mittel">
       <div className="kopf-reihe">
         <h1 className="seitentitel">Rezepte</h1>
-        <a className="knopf knopf-akzent" href={pfade.rezeptNeu()}>
-          <Plus className="i" aria-hidden /> Neues Rezept
-        </a>
+        <div className="knopfreihe">
+          <a className="knopf knopf-linie" href={pfade.rezeptFoto()}>
+            <Camera className="i" aria-hidden /> Per Foto
+          </a>
+          <a className="knopf knopf-akzent" href={pfade.rezeptNeu()}>
+            <Plus className="i" aria-hidden /> Neues Rezept
+          </a>
+        </div>
       </div>
 
       <section className="karte suche-karte">

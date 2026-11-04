@@ -24,8 +24,8 @@ function Treffer({ lm, onWahl }: { lm: LebensmittelKurz; onWahl(id: string): voi
  * Suchen und auswählen, in einem Fenster. Mit `mitRezepten` kommen die eigenen Rezepte dazu, ihre Kalorien gelten je Portion.
  * `zuletzt`: was ohne Suchwort oben steht.
  */
-export function LebensmittelWahl({ onWahl, mitRezepten, mitTellern, zuletzt = [], zuletztTitel = 'Zuletzt gegessen' }: { onWahl(id: string): void; mitRezepten?: boolean; mitTellern?: boolean; zuletzt?: readonly LebensmittelKurz[]; zuletztTitel?: string }) {
-  const [text, setText] = useState('');
+export function LebensmittelWahl({ onWahl, mitRezepten, mitTellern, zuletzt = [], zuletztTitel = 'Zuletzt gegessen', startText = '' }: { onWahl(id: string): void; mitRezepten?: boolean; mitTellern?: boolean; zuletzt?: readonly LebensmittelKurz[]; zuletztTitel?: string; startText?: string }) {
+  const [text, setText] = useState(startText);
   const [treffer, setTreffer] = useState<LebensmittelKurz[]>([]);
   const [rezepte, setRezepte] = useState<LebensmittelKurz[]>([]);
   const [teller, setTeller] = useState<LebensmittelKurz[]>([]);

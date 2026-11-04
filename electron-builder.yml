@@ -18,6 +18,12 @@ asar: true
 extraResources:
   - from: ressourcen/bls-4.0.sqlite
     to: bls-4.0.sqlite
+  # Offline-Kopie von Open Food Facts, nur deutsche Produkte (npm run off).
+  - from: ressourcen/openfoodfacts-de.sqlite
+    to: openfoodfacts-de.sqlite
+  # Liest Text und Barcodes aus Fotos, auf dem Mac (npm run sehen).
+  - from: ressourcen/starkmacher-sehen
+    to: starkmacher-sehen
 mac:
   category: public.app-category.healthcare-fitness
   icon: build/icon.png

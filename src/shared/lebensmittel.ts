@@ -4,6 +4,7 @@
  *
  * Alle Werte sind je 100 g (oder je 100 ml, wenn `basis` es sagt). Ein fehlender Schlüssel heißt „keine Angabe“, nie null.
  */
+import { barcodeGueltig } from './barcode';
 import type { Bedarf, NaehrstoffZiel } from './bedarf';
 import { umrechnungPruefen, type Umrechnung } from './einheiten';
 import { StarkFehler } from './fehler';
@@ -49,6 +50,8 @@ export interface Lebensmittel {
   packung: number | null;
   /** Dateiname im Fotoordner. */
   foto: string | null;
+  /** Einmal gespeichert, merkt sich das Lebensmittel seinen Barcode. */
+  barcode?: string | null;
   /** Hinweise zu Korrekturen des Max Rubner-Instituts. */
   hinweise: readonly string[];
   anmerkung: string | null;
@@ -82,6 +85,7 @@ export interface LebensmittelEingabe {
   nurNatuerlicherZucker: boolean;
   packung: number | null;
   foto: string | null;
+  barcode?: string | null;
 }
 
 export const GRUPPEN_BLS: Readonly<Record<string, string>> = {
@@ -166,6 +170,8 @@ export function eingabePruefen(roh: unknown): LebensmittelEingabe {
   const packung = e.packung === null || e.packung === undefined ? null : Number(e.packung);
   if (packung !== null && !packungErlaubt(packung)) throw new StarkFehler('UNGUELTIG', 'Die Packungsgröße stimmt nicht.');
   if (e.foto !== null && e.foto !== undefined && !fotoNameErlaubt(e.foto)) throw new StarkFehler('UNGUELTIG', 'Das Foto stimmt nicht.');
+  const barcode = typeof e.barcode === 'string' && e.barcode.trim() !== '' ? e.barcode.trim() : null;
+  if (barcode !== null && !barcodeGueltig(barcode)) throw new StarkFehler('UNGUELTIG', 'Der Barcode stimmt nicht. Bitte prüf die Ziffern.');
   let schaetzung: Schaetzung | null = null;
   if (e.schaetzung !== null && e.schaetzung !== undefined) {
     const s = e.schaetzung as Record<string, unknown>;
@@ -183,6 +189,7 @@ export function eingabePruefen(roh: unknown): LebensmittelEingabe {
     nurNatuerlicherZucker: e.nurNatuerlicherZucker === true,
     packung,
     foto: (e.foto as string | null | undefined) ?? null,
+    barcode,
   };
 }
 

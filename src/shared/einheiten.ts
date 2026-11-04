@@ -63,7 +63,8 @@ const LOEFFEL: readonly { muster: RegExp; gruppen?: string; werte: Teil }[] = [
   { muster: /kakao.*pulver|instantpulver|pulver/, werte: { dichte: 0.5, el: 8, tl: 3 } },
   { muster: /./, gruppen: 'H', werte: { el: 10, tl: 3 } },
   { muster: /pfeffer|paprika|zimt|kurkuma|kümmel|muskat|curry|kräuter|gewürz/, gruppen: 'R', werte: { el: 7, tl: 2 } },
-  { muster: /senf|ketchup|tomatenmark|mark|paste|meerrettich/, werte: { dichte: 1.1, el: 20, tl: 6 } },
+  // Als ganze Wörter: In „pasteurisiert“ steckt auch eine „paste“.
+  { muster: /senf|ketchup|mark( |,|$)|paste( |,|$)|meerrettich/, werte: { dichte: 1.1, el: 20, tl: 6 } },
   { muster: /quark|joghurt|skyr|schmand|crème|creme|frischkäse|saure sahne/, gruppen: 'M', werte: { dichte: 1.05, el: 20, tl: 7 } },
   { muster: /sahne|milch|buttermilch|kefir/, gruppen: 'M', werte: { dichte: 1.03, el: 15, tl: 5 } },
   { muster: /essig|saft|wein|bier|limonade|nektar/, werte: { dichte: 1.03, el: 15, tl: 5 } },

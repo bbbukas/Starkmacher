@@ -184,6 +184,9 @@ export function EinstellungenSeite() {
             <b>Lebensmittel:</b> {BLS_QUELLE} {BLS_AENDERUNGEN}
           </li>
           <li>
+            <b>Barcodes:</b> Enthält Daten von Open Food Facts (openfoodfacts.org), bereitgestellt unter der Open Database License (ODbL). Die Werte haben Freiwillige eingetragen, deshalb kommt beim Übernehmen immer erst die Prüfseite. Starkmacher nutzt eine gefilterte Offline-Kopie, nur Produkte aus Deutschland.
+          </li>
+          <li>
             <b>Zwei Stufen:</b> Das Minimum ist für jeden Nährstoff die jüngste eigene wissenschaftliche Herleitung einer europäischen Fachstelle oder der WHO, geprüft am 03.11.2026. Das Optimum ist der Bereich, für den die Forschung einen Nutzen über das Minimum hinaus zeigt, geprüft am 04.11.2026 (Eiweiß, Fett, Ballaststoffe, EPA und DHA). Die Quelle je Nährstoff steht unter „Mein Bedarf“ am Buchstaben neben dem Namen und am Optimum.
           </li>
           {QUELLEN.map((q) => (

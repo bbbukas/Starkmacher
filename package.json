@@ -8,16 +8,18 @@
   "main": "out/main/index.js",
   "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/sehen-bauen.mjs --wenn-fehlt && electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "node scripts/bls-bauen.mjs --wenn-fehlt && electron-vite build && playwright test",
+    "test:e2e": "node scripts/bls-bauen.mjs --wenn-fehlt && node scripts/sehen-bauen.mjs --wenn-fehlt && electron-vite build && playwright test",
     "symbol": "electron scripts/programmsymbol.mjs",
     "bls": "node scripts/bls-bauen.mjs",
-    "paket": "node scripts/bls-bauen.mjs --wenn-fehlt && electron-vite build && electron-builder --mac --dir"
+    "sehen": "node scripts/sehen-bauen.mjs",
+    "off": "node scripts/off-bauen.mjs",
+    "paket": "node scripts/bls-bauen.mjs --wenn-fehlt && node scripts/sehen-bauen.mjs --wenn-fehlt && electron-vite build && electron-builder --mac --dir"
   },
   "engines": {
     "node": ">=22"
@@ -34,6 +36,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^6.0.0",
     "lucide-react": "^1.60.0",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^5.9.3",

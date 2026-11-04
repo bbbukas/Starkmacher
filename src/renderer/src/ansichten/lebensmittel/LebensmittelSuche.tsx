@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Plus, Search, X } from 'lucide-react';
+import { ChevronRight, Plus, Search, X, Camera } from 'lucide-react';
 import type { SuchErgebnis } from '@shared/api';
 import { zahlText } from '@shared/format';
 import { GRUPPEN_BLS, type LebensmittelKurz, type SuchFilter } from '@shared/lebensmittel';
@@ -73,9 +73,14 @@ export function LebensmittelSuche() {
     <main className="seite seite-mittel">
       <div className="kopf-reihe">
         <h1 className="seitentitel">Lebensmittel</h1>
-        <a className="knopf knopf-akzent" href={pfade.lebensmittelNeu()}>
-          <Plus className="i" aria-hidden /> Neues Lebensmittel
-        </a>
+        <div className="knopfreihe">
+          <a className="knopf knopf-linie" href={pfade.lebensmittelFoto()}>
+            <Camera className="i" aria-hidden /> Per Foto
+          </a>
+          <a className="knopf knopf-akzent" href={pfade.lebensmittelNeu()}>
+            <Plus className="i" aria-hidden /> Neues Lebensmittel
+          </a>
+        </div>
       </div>
 
       <section className="karte suche-karte">

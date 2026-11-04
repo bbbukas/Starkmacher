@@ -3,7 +3,7 @@
  * sieht nur window.starkmacher – kein Dateizugriff, kein Netzwerk, kein Node.
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { MenueBefehl, StarkmacherApi } from '@shared/api';
+import type { HandyEreignis, MenueBefehl, StarkmacherApi } from '@shared/api';
 
 const api: StarkmacherApi = {
   teller: {
@@ -22,6 +22,18 @@ const api: StarkmacherApi = {
     hashtags: () => ipcRenderer.invoke('rezepte:hashtags'),
     hashtagSpeichern: (hashtag) => ipcRenderer.invoke('rezepte:hashtagSpeichern', hashtag),
     hashtagLoeschen: (id) => ipcRenderer.invoke('rezepte:hashtagLoeschen', id),
+  },
+  fotos: {
+    waehlen: (zweck) => ipcRenderer.invoke('fotos:waehlen', zweck),
+    einlesen: (daten, zweck) => ipcRenderer.invoke('fotos:einlesen', daten, zweck),
+    barcode: (code) => ipcRenderer.invoke('fotos:barcode', code),
+    handyOeffnen: (zweck) => ipcRenderer.invoke('fotos:handyOeffnen', zweck),
+    handySchliessen: () => ipcRenderer.send('fotos:handySchliessen'),
+    beiHandy: (rueckruf) => {
+      const hoerer = (_e: IpcRendererEvent, ereignis: HandyEreignis) => rueckruf(ereignis);
+      ipcRenderer.on('fotos:handy', hoerer);
+      return () => ipcRenderer.removeListener('fotos:handy', hoerer);
+    },
   },
   tagebuch: {
     tag: (datum) => ipcRenderer.invoke('tagebuch:tag', datum),

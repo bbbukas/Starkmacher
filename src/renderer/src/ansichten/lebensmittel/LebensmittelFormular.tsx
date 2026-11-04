@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, ImagePlus, LoaderCircle, Sparkles, Trash2 } from 'lucide-react';
-import type { AehnlichesLebensmittel } from '@shared/api';
+import type { AehnlichesLebensmittel, FotoErgebnis } from '@shared/api';
+import { barcodeGueltig, packungAus } from '@shared/barcode';
 import { mengeText, zahlText } from '@shared/format';
 import { BLS_PREFIX, GRUPPEN_BLS, PACKUNGS_CODES, packungErlaubt, schaetzungAus, wertErlaubt, type Basis, type LebensmittelEingabe, type Schaetzung } from '@shared/lebensmittel';
 import { GRUPPEN, naehrstoff, naehrstoffeDerGruppe, type Naehrstoff } from '@shared/naehrstoffe';
+import { aufHundert, ZWEIFEL_TEXT, type Zweifel } from '@shared/naehrwertFoto';
 import { api } from '../../api';
 import { Haken, Wahl, ZahlFeld } from '../../komponenten/Felder';
+import { FotoBild } from '../../komponenten/FotoBild';
+import { FotoEingang, HandyDialog } from '../../komponenten/FotoEingang';
 import { useMeldungen } from '../../komponenten/Meldungen';
 import { gehe, pfade } from '../../router';
 
@@ -13,18 +17,21 @@ const PACKUNG = new Set<string>(PACKUNGS_CODES);
 
 const titelFuer: Record<string, string> = { FASAT: 'davon gesättigte Fettsäuren', SUGAR: 'davon Zucker' };
 
-function WertFeld({ n, wert, onWert }: { n: Naehrstoff; wert: number | null; onWert(wert: number | null): void }) {
+function WertFeld({ n, wert, zweifel, onWert }: { n: Naehrstoff; wert: number | null; zweifel?: Zweifel | undefined; onWert(wert: number | null): void }) {
   return (
-    <ZahlFeld
-      label={titelFuer[n.code] ?? n.name}
-      einheit={n.einheit}
-      wert={wert}
-      onWert={onWert}
-      istErlaubt={(z) => wertErlaubt(n.code, z)}
-      fehlerText="Dieser Wert passt nicht."
-      leerErlaubt
-      stellen={3}
-    />
+    <div className={zweifel ? 'wert-zweifel' : undefined} data-code={n.code}>
+      <ZahlFeld
+        label={titelFuer[n.code] ?? n.name}
+        einheit={n.einheit}
+        wert={wert}
+        onWert={onWert}
+        istErlaubt={(z) => wertErlaubt(n.code, z)}
+        fehlerText="Dieser Wert passt nicht."
+        leerErlaubt
+        stellen={3}
+        {...(zweifel ? { hilfe: ZWEIFEL_TEXT[zweifel] } : {})}
+      />
+    </div>
   );
 }
 
@@ -163,8 +170,18 @@ function FotoBereich({ foto, onFoto }: { foto: string | null; onFoto(name: strin
   );
 }
 
-/** Neues Lebensmittel, Bearbeiten eines eigenen oder persönliche Version eines BLS-Lebensmittels. */
-export function LebensmittelFormular({ id }: { id?: string }) {
+/** Auf der Packung stehen die Werte nur je Portion: Sie werden auf 100 g umgerechnet und bleiben hier zum Nachrechnen. */
+interface PortionsWerte {
+  gelesen: Readonly<Record<string, number>>;
+  menge: number | null;
+  name: string | null;
+}
+
+/**
+ * Neues Lebensmittel, Bearbeiten eines eigenen oder persönliche Version eines BLS-Lebensmittels.
+ * `perFoto`: erst das Foto, dann die Prüfseite mit dem Foto neben den erkannten Werten (Bauauftrag 5.3).
+ */
+export function LebensmittelFormular({ id, perFoto }: { id?: string; perFoto?: boolean }) {
   const { zeigen } = useMeldungen();
   const [laedt, setLaedt] = useState(id !== undefined);
   const [name, setName] = useState('');
@@ -175,7 +192,19 @@ export function LebensmittelFormular({ id }: { id?: string }) {
   const [natuerlich, setNatuerlich] = useState(false);
   const [schaetzung, setSchaetzung] = useState<Schaetzung | null>(null);
   const [foto, setFoto] = useState<string | null>(null);
+  const [barcode, setBarcode] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
+  // Nur auf der Prüfseite
+  const [gelesen, setGelesen] = useState(false);
+  const [zweifel, setZweifel] = useState<Record<string, Zweifel>>({});
+  const [portion, setPortion] = useState<PortionsWerte | null>(null);
+  const [hinweis, setHinweis] = useState<string | null>(null);
+  const [barcodeFoto, setBarcodeFoto] = useState<string | null>(null);
+  const [fotoBehalten, setFotoBehalten] = useState(true);
+  const [getippt, setGetippt] = useState('');
+  const [handyOffen, setHandyOffen] = useState(false);
+  const [fotoFehler, setFotoFehler] = useState<string | null>(null);
+  const fotosOffen = useRef<{ foto: string | null; barcodeFoto: string | null }>({ foto: null, barcodeFoto: null });
   const [speichert, setSpeichert] = useState(false);
   const urspruenglichesFoto = useRef<string | null>(null);
 
@@ -202,6 +231,7 @@ export function LebensmittelFormular({ id }: { id?: string }) {
       setNatuerlich(lm.nurNatuerlicherZucker);
       setSchaetzung(lm.schaetzung);
       setFoto(lm.foto);
+      setBarcode(lm.barcode ?? '');
       urspruenglichesFoto.current = lm.foto;
     });
     return () => {
@@ -209,12 +239,107 @@ export function LebensmittelFormular({ id }: { id?: string }) {
     };
   }, [id, zeigen]);
 
+  // Geht man auf der Prüfseite woandershin, sollen die Fotos nicht liegen bleiben.
+  useEffect(() => {
+    if (!perFoto) return;
+    return () => {
+      const { foto: f, barcodeFoto: b } = fotosOffen.current;
+      if (f) api.lebensmittel.fotoVerwerfen(f);
+      if (b) api.lebensmittel.fotoVerwerfen(b);
+    };
+  }, [perFoto]);
+  fotosOffen.current = { foto, barcodeFoto };
+
   const wertSetzen = (code: string, wert: number | null) => {
+    setZweifel((alt) => {
+      if (alt[code] === undefined) return alt;
+      const { [code]: _weg, ...rest } = alt;
+      return rest;
+    });
     setWerte((alt) => {
       const neu = { ...alt };
       if (wert === null) delete neu[code];
       else neu[code] = wert;
       return neu;
+    });
+  };
+
+  const portionAendern = (menge: number | null) => {
+    if (!portion) return;
+    setPortion({ ...portion, menge });
+    const umgerechnet = aufHundert(portion.gelesen, 'portion', menge);
+    if (umgerechnet) setWerte((alt) => ({ ...alt, ...umgerechnet }));
+  };
+
+  /** Was ein Foto ergeben hat, kommt auf die Prüfseite. Die Tabelle von der Packung geht vor dem, was Freiwillige erfasst haben. */
+  const fotoUebernehmen = (e: FotoErgebnis) => {
+    if (e.zweck !== 'lebensmittel') return;
+    const treffer = e.barcode;
+    if (treffer?.art === 'eigen') {
+      api.lebensmittel.fotoVerwerfen(e.foto);
+      zeigen({ art: 'info', text: `Das hast du schon gespeichert: ${treffer.name}.` });
+      gehe(pfade.lebensmittel(treffer.id));
+      return;
+    }
+    if (!e.tabelle && !treffer) {
+      api.lebensmittel.fotoVerwerfen(e.foto);
+      setFotoFehler('Auf diesem Foto habe ich weder eine Nährwerttabelle noch einen Barcode erkannt. Versuch es bitte noch einmal, möglichst gerade und scharf.');
+      return;
+    }
+    setFotoFehler(null);
+    if (treffer) produktUebernehmen(treffer);
+    if (e.tabelle) {
+      const t = e.tabelle;
+      const je100 = aufHundert(t.gelesen, t.bezug, t.portionMenge);
+      setBasis(t.basis);
+      if (je100) setWerte((alt) => ({ ...alt, ...je100 }));
+      setZweifel(t.zweifel);
+      setPortion(t.bezug === 'portion' ? { gelesen: t.gelesen, menge: t.portionMenge, name: t.portionName } : null);
+      if (foto) api.lebensmittel.fotoVerwerfen(foto);
+      setFoto(e.foto);
+    } else {
+      if (barcodeFoto) api.lebensmittel.fotoVerwerfen(barcodeFoto);
+      setBarcodeFoto(e.foto);
+    }
+    setGelesen(true);
+  };
+
+  const produktUebernehmen = (treffer: Exclude<NonNullable<Extract<FotoErgebnis, { zweck: 'lebensmittel' }>['barcode']>, { art: 'eigen' }>) => {
+    setBarcode(treffer.code);
+    if (treffer.art === 'keiner') {
+      setHinweis(treffer.kopieDa ? 'Diesen Barcode kenne ich nicht. Mach bitte ein Foto der Nährwerttabelle, dann merkt sich das Lebensmittel seinen Barcode.' : 'Die Offline-Kopie von Open Food Facts fehlt auf diesem Mac. Mach bitte ein Foto der Nährwerttabelle.');
+      return;
+    }
+    const p = treffer.produkt;
+    if (p.name) setName((alt) => (alt.trim() === '' ? p.name! : alt));
+    if (p.marke) setMarke((alt) => (alt.trim() === '' ? p.marke! : alt));
+    const packungsGroesse = packungAus(p.menge);
+    if (packungsGroesse) {
+      setPackung(packungsGroesse.groesse);
+      setBasis(packungsGroesse.basis);
+    }
+    setWerte((alt) => ({ ...p.werte, ...alt }));
+    setHinweis(
+      Object.keys(p.werte).length > 0
+        ? 'Gefunden in der Offline-Kopie von Open Food Facts. Die Werte haben Freiwillige eingetragen, bitte prüf sie kurz.'
+        : 'Gefunden in der Offline-Kopie von Open Food Facts, aber ohne Nährwerte. Mach bitte ein Foto der Nährwerttabelle.',
+    );
+  };
+
+  const barcodeNachschlagen = () => {
+    const code = getippt.trim();
+    void api.fotos.barcode(code).then((a) => {
+      if (!a.ok) {
+        zeigen({ art: 'fehler', text: a.meldung });
+        return;
+      }
+      if (a.wert.art === 'eigen') {
+        zeigen({ art: 'info', text: `Das hast du schon gespeichert: ${a.wert.name}.` });
+        gehe(pfade.lebensmittel(a.wert.id));
+        return;
+      }
+      produktUebernehmen(a.wert);
+      setGelesen(true);
     });
   };
 
@@ -230,8 +355,19 @@ export function LebensmittelFormular({ id }: { id?: string }) {
       window.scrollTo(0, 0);
       return;
     }
+    if (barcode.trim() !== '' && !barcodeGueltig(barcode.trim())) {
+      setFehler('Der Barcode stimmt nicht. Bitte prüf die Ziffern, oder lass das Feld leer.');
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (portion && !portion.menge) {
+      setFehler('Bitte trag ein, wie groß eine Portion ist. Sonst lassen sich die Werte nicht auf 100 g umrechnen.');
+      window.scrollTo(0, 0);
+      return;
+    }
     setFehler(null);
     setSpeichert(true);
+    const behalten = perFoto && !fotoBehalten ? null : foto;
     const eingabe: LebensmittelEingabe = {
       ...(id ? { id } : {}),
       name,
@@ -241,7 +377,8 @@ export function LebensmittelFormular({ id }: { id?: string }) {
       schaetzung,
       nurNatuerlicherZucker: natuerlich,
       packung,
-      foto,
+      foto: behalten,
+      barcode: barcode.trim() === '' ? null : barcode.trim(),
     };
     void api.lebensmittel.speichern(eingabe).then((antwort) => {
       setSpeichert(false);
@@ -250,6 +387,12 @@ export function LebensmittelFormular({ id }: { id?: string }) {
         window.scrollTo(0, 0);
         return;
       }
+      // Was jetzt noch nicht zum Lebensmittel gehört, wird weggeräumt. Das Gespeicherte bleibt.
+      if (foto && !behalten) api.lebensmittel.fotoVerwerfen(foto);
+      if (barcodeFoto) api.lebensmittel.fotoVerwerfen(barcodeFoto);
+      fotosOffen.current = { foto: null, barcodeFoto: null };
+      setFoto(null);
+      setBarcodeFoto(null);
       zeigen({ art: 'info', text: istVersion ? 'Deine Version ist gespeichert.' : 'Lebensmittel gespeichert.' });
       gehe(pfade.lebensmittel(antwort.wert.id));
     });
@@ -263,15 +406,60 @@ export function LebensmittelFormular({ id }: { id?: string }) {
     );
   }
 
-  const titel = !id ? 'Neues Lebensmittel' : istVersion ? 'Eigene Version' : 'Lebensmittel bearbeiten';
+  const titel = perFoto ? 'Lebensmittel per Foto' : !id ? 'Neues Lebensmittel' : istVersion ? 'Eigene Version' : 'Lebensmittel bearbeiten';
   const packungsWerte = PACKUNGS_CODES.map((c) => naehrstoff(c)!);
+  const anzeigeFoto = foto ?? barcodeFoto;
 
-  return (
-    <main className="seite seite-mittel">
-      <a className="zurueck" href={zurueck} onClick={() => fotoWechseln(urspruenglichesFoto.current)}>
-        <ArrowLeft className="i" aria-hidden /> Zurück
-      </a>
-      <h1 className="seitentitel">{titel}</h1>
+  const fotoHinweis = fotoFehler && (
+    <div className="hinweis hinweis-fehler" role="alert">
+      <p>{fotoFehler}</p>
+    </div>
+  );
+  const handyFenster = <HandyDialog offen={handyOffen} zweck="lebensmittel" onSchliessen={() => setHandyOffen(false)} onErgebnis={fotoUebernehmen} />;
+
+  // Erster Schritt: erst das Foto, das Formular kommt danach.
+  if (perFoto && !gelesen) {
+    return (
+      <>
+      <main className="seite seite-mittel">
+        <a className="zurueck" href={zurueck}>
+          <ArrowLeft className="i" aria-hidden /> Zurück
+        </a>
+        <h1 className="seitentitel">{titel}</h1>
+        <p className="einleitung">Fotografiere die Nährwerttabelle oder den Barcode. Starkmacher liest das Foto hier auf dem Mac, und du prüfst danach alles, bevor es gespeichert wird.</p>
+        {fotoHinweis}
+        <FotoEingang zweck="lebensmittel" onErgebnis={fotoUebernehmen} onHandy={() => setHandyOffen(true)} />
+        <form
+          className="barcode-tippen"
+          onSubmit={(e) => {
+            e.preventDefault();
+            barcodeNachschlagen();
+          }}
+        >
+          <div className="feld">
+            <label htmlFor="barcode-tippen">Oder die Nummer unter dem Barcode eintippen</label>
+            <div className="feld-zeile">
+              <input id="barcode-tippen" type="text" inputMode="numeric" autoComplete="off" value={getippt} onChange={(e) => setGetippt(e.target.value)} />
+              <button type="submit" className="knopf knopf-linie" disabled={getippt.trim() === ''}>
+                Nachschlagen
+              </button>
+            </div>
+          </div>
+        </form>
+        <p className="leise">
+          Du hast kein Foto? <a className="verweis" href={pfade.lebensmittelNeu()}>Von Hand anlegen</a>
+        </p>
+      </main>
+      {handyFenster}
+      </>
+    );
+  }
+
+  const formular = (
+    <>
+      {perFoto && <p className="einleitung">Prüf bitte die erkannten Werte und korrigiere, was nicht stimmt. Gespeichert wird erst, wenn du auf „Speichern“ klickst.</p>}
+      {hinweis && <p className="sanft-hinweis pruef-hinweis">{hinweis}</p>}
+      {Object.keys(zweifel).length > 0 && <p className="sanft-hinweis pruef-hinweis zweifelnd">Die markierten Werte solltest du dir genauer ansehen.</p>}
       {istVersion && <p className="einleitung">Das Original aus dem BLS bleibt unverändert. Deine Version erscheint in der Suche statt des Originals und lässt sich jederzeit zurücksetzen.</p>}
       {fehler && (
         <div className="hinweis hinweis-fehler" role="alert">
@@ -309,7 +497,11 @@ export function LebensmittelFormular({ id }: { id?: string }) {
             </div>
             <ZahlFeld label="Packungsgröße (freiwillig)" einheit={basis} wert={packung} onWert={setPackung} istErlaubt={packungErlaubt} fehlerText="Diese Größe passt nicht." leerErlaubt stellen={1} />
           </div>
-          <FotoBereich foto={foto} onFoto={fotoWechseln} />
+          <div className="feld">
+            <label htmlFor="lm-barcode">Barcode (freiwillig)</label>
+            <input id="lm-barcode" type="text" inputMode="numeric" value={barcode} autoComplete="off" onChange={(e) => setBarcode(e.target.value)} />
+          </div>
+          {!perFoto && <FotoBereich foto={foto} onFoto={fotoWechseln} />}
         </section>
 
         <section className="karte form-karte">
@@ -324,9 +516,15 @@ export function LebensmittelFormular({ id }: { id?: string }) {
             wert={basis}
             onWert={setBasis}
           />
+          {portion && (
+            <div className="sanft-hinweis portion-hinweis">
+              <p>Auf der Packung stehen die Werte {portion.name ? `je ${portion.name}` : 'je Portion'}. Starkmacher rechnet sie auf 100 {basis} um.</p>
+              <ZahlFeld label={portion.name ? `So schwer ist ein ${portion.name}` : 'So groß ist eine Portion'} einheit={basis} wert={portion.menge} onWert={portionAendern} istErlaubt={packungErlaubt} fehlerText="Das passt nicht." leerErlaubt stellen={1} />
+            </div>
+          )}
           <div className="feld-reihe feld-reihe-2">
             {packungsWerte.map((n) => (
-              <WertFeld key={n.code} n={n} wert={werte[n.code] ?? null} onWert={(z) => wertSetzen(n.code, z)} />
+              <WertFeld key={n.code} n={n} wert={werte[n.code] ?? null} zweifel={zweifel[n.code]} onWert={(z) => wertSetzen(n.code, z)} />
             ))}
           </div>
           <Haken label="Nur natürlicher Zucker" wert={natuerlich} onWert={setNatuerlich} hilfe="Zum Beispiel bei ungesüßtem Joghurt. Sonst zählt der ganze Zucker als freier Zucker." />
@@ -350,7 +548,7 @@ export function LebensmittelFormular({ id }: { id?: string }) {
                 </summary>
                 <div className="zeilen feld-reihe feld-reihe-2 nw-felder">
                   {liste.map((n) => (
-                    <WertFeld key={n.code} n={n} wert={werte[n.code] ?? null} onWert={(z) => wertSetzen(n.code, z)} />
+                    <WertFeld key={n.code} n={n} wert={werte[n.code] ?? null} zweifel={zweifel[n.code]} onWert={(z) => wertSetzen(n.code, z)} />
                   ))}
                 </div>
               </details>
@@ -367,6 +565,39 @@ export function LebensmittelFormular({ id }: { id?: string }) {
           </a>
         </div>
       </form>
+    </>
+  );
+
+  if (!perFoto) {
+    return (
+      <main className="seite seite-mittel">
+        <a className="zurueck" href={zurueck} onClick={() => fotoWechseln(urspruenglichesFoto.current)}>
+          <ArrowLeft className="i" aria-hidden /> Zurück
+        </a>
+        <h1 className="seitentitel">{titel}</h1>
+        {formular}
+      </main>
+    );
+  }
+
+  return (
+    <>
+    <main className="seite seite-breit">
+      <a className="zurueck" href={zurueck}>
+        <ArrowLeft className="i" aria-hidden /> Zurück
+      </a>
+      <h1 className="seitentitel">{titel}</h1>
+      <div className="pruefseite">
+        <aside className="pruef-spalte" aria-label="Foto">
+          {anzeigeFoto && <FotoBild name={anzeigeFoto} text="Dein Foto" klasse="pruef-foto" />}
+          {foto && <Haken label="Foto beim Lebensmittel aufheben" wert={fotoBehalten} onWert={setFotoBehalten} />}
+          {fotoHinweis}
+          <FotoEingang zweck="lebensmittel" klein onErgebnis={fotoUebernehmen} onHandy={() => setHandyOffen(true)} />
+        </aside>
+        <div className="stapel">{formular}</div>
+      </div>
     </main>
+    {handyFenster}
+    </>
   );
 }

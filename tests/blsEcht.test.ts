@@ -9,6 +9,7 @@ import { grundbestandOeffnen } from '../src/main/daten/bls';
 import { standardUmrechnung } from '@shared/einheiten';
 import { naehrstoff } from '@shared/naehrstoffe';
 import { aehnlichste, sortierteTreffer } from '@shared/suche';
+import { zutatSuchen, ZUTAT_EINTRAEGE } from '@shared/rezeptFoto';
 import { ALLTAGS_NAMEN } from '@shared/vorschlaege';
 
 const DATEI = join(import.meta.dirname, '../ressourcen/bls-4.0.sqlite');
@@ -24,6 +25,40 @@ describe.runIf(existsSync(DATEI))('Der echte BLS', () => {
       expect(nachName.has(name), name).toBe(true);
       expect(nachName.get(name)!.werte.ENERCC, name).toBeDefined();
     }
+  });
+  it('„pasteurisiert“ macht aus Milch keine Paste', () => {
+    expect(standardUmrechnung('Vollmilch frisch, 3,5 % Fett, pasteurisiert', 'M111000').dichte).toBe(1.03);
+    expect(standardUmrechnung('Tomatenmark', 'G000000').dichte).toBe(1.1);
+    expect(standardUmrechnung('Würzpaste', 'R000000').dichte).toBe(1.1);
+  });
+  it('die üblichen Einträge für Rezeptzutaten gibt es wirklich', () => {
+    const namen = new Set(liste.map((e) => e.name));
+    for (const [wort, name] of Object.entries(ZUTAT_EINTRAEGE)) expect(namen.has(name), `${wort}: ${name}`).toBe(true);
+  });
+  it('Zutaten vom Foto finden den passenden, rohen Eintrag', () => {
+    const bestand = liste.map((e) => ({ name: e.name, gruppe: e.code[0] ?? null }));
+    const erster = (name: string, zeile = name) => zutatSuchen({ name, zeile }, bestand).treffer[0]?.name;
+    const erwartet: Readonly<Record<string, string>> = {
+      Mehl: 'Weizen Mehl, Type 405',
+      Olivenöl: 'Olivenöl',
+      Eier: 'Hühnerei roh',
+      Zwiebel: 'Speisezwiebel roh',
+      Knoblauch: 'Knoblauch roh',
+      Milch: 'Vollmilch frisch, 3,5 % Fett, pasteurisiert',
+      'rote Linsen': 'Linse rot reif',
+      Möhre: 'Karotte/Möhre, roh',
+      Butter: 'Süßrahmbutter',
+      Kartoffeln: 'Kartoffel geschält, roh',
+      Tomaten: 'Tomate roh',
+      Reis: 'Reis poliert, roh',
+      Hackfleisch: 'Rind/Schwein, Hackfleisch gemischt, roh',
+      Champignons: 'Champignon roh',
+      Brokkoli: 'Broccoli roh',
+    };
+    for (const [zutat, eintrag] of Object.entries(erwartet)) expect(erster(zutat), zutat).toBe(eintrag);
+    expect(erster('Kichererbsen', '1 Dose Kichererbsen (240 g)')).toBe('Kichererbse reif, Konserve, abgetropft');
+    // Was der BLS nicht führt, bleibt ohne Vorschlag und landet auf der Prüfseite bei „noch zu klären“.
+    expect(erster('Kreuzkümmel')).toBeUndefined();
   });
   it('hat alle 7.140 Lebensmittel, und jeder Wert gehört zu einem bekannten Nährstoff', () => {
     expect(liste).toHaveLength(7140);

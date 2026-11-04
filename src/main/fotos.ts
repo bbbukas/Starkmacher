@@ -1,27 +1,26 @@
 /**
- * Fotos auf dem Mac (Mac-Eigenes hinter einer klaren Schnittstelle). Beim Einlesen werden sie verkleinert,
- * damit Sicherungen klein bleiben. Die Oberfläche bekommt sie als data:-Adresse und braucht so keinen Dateizugriff.
+ * Fotos auf dem Mac (Mac-Eigenes hinter einer klaren Schnittstelle). Das Hilfsprogramm dreht sie richtig herum, verkleinert
+ * sie, damit Sicherungen klein bleiben, und lässt alle Angaben aus der Datei weg, auch den Standort eines Handyfotos.
+ * Die Oberfläche bekommt sie als data:-Adresse und braucht so keinen Dateizugriff.
  */
 import { randomUUID } from 'node:crypto';
-import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { nativeImage } from 'electron';
 import { StarkFehler } from '@shared/fehler';
 import { fotoNameErlaubt } from '@shared/lebensmittel';
+import type { Sehen } from './sehen';
 
 const LAENGSTE_SEITE = 2000;
-const QUALITAET = 85;
 
-export function fotoEinlesen(pfad: string, ordner: string): string {
-  const bild = nativeImage.createFromPath(pfad);
-  if (bild.isEmpty()) throw new StarkFehler('UNGUELTIG', 'Dieses Bild lässt sich nicht lesen. Bitte ein JPG, PNG oder HEIC wählen.');
-  const { width, height } = bild.getSize();
-  const groesser = Math.max(width, height);
-  const passend = groesser > LAENGSTE_SEITE ? bild.resize({ width: Math.round((width * LAENGSTE_SEITE) / groesser), height: Math.round((height * LAENGSTE_SEITE) / groesser), quality: 'good' }) : bild;
+export async function fotoEinlesen(pfad: string, ordner: string, sehen: Sehen): Promise<string> {
   mkdirSync(ordner, { recursive: true });
   const name = `${randomUUID()}.jpg`;
   const ziel = join(ordner, name);
-  writeFileSync(ziel, passend.toJPEG(QUALITAET));
+  try {
+    await sehen.jpeg(pfad, ziel, LAENGSTE_SEITE);
+  } catch {
+    throw new StarkFehler('UNGUELTIG', 'Dieses Bild lässt sich nicht lesen. Bitte ein JPG, PNG oder HEIC wählen.');
+  }
   chmodSync(ziel, 0o600);
   return name;
 }

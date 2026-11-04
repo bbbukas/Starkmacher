@@ -3,7 +3,7 @@
  * Alles, was von der Oberfläche kommt, wird hier oder im Datenbaustein geprüft.
  */
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import type { Aenderung, Antwort, ProgrammInfo, SuchAnfrage } from '@shared/api';
+import type { Aenderung, Antwort, FotoZweck, HandyEreignis, ProgrammInfo, SuchAnfrage } from '@shared/api';
 import { StarkFehler } from '@shared/fehler';
 import type { RezeptAnfrage } from '@shared/rezepte';
 import type { DatenDienst } from './daten/dienst';
@@ -11,7 +11,10 @@ import type { LebensmittelDienst } from './daten/lebensmittelDienst';
 import type { RezeptDienst } from './daten/rezeptDienst';
 import type { TagebuchDienst } from './daten/tagebuchDienst';
 import type { TellerDienst } from './daten/tellerDienst';
+import { zweckPruefen, type FotoDienst } from './fotoDienst';
 import { fotoEinlesen, fotoEntfernen, fotoLesen } from './fotos';
+import { HandySeite, lokaleAdresse } from './handy';
+import type { Sehen } from './sehen';
 import type { Sicherungen } from './sicherung';
 
 async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>> {
@@ -24,7 +27,54 @@ async function alsAntwort<T>(aufgabe: () => T | Promise<T>): Promise<Antwort<T>>
   }
 }
 
-export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, teller: TellerDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, info: ProgrammInfo): void {
+const HANDY_TITEL: Readonly<Record<FotoZweck, string>> = {
+  lebensmittel: 'Foto für dein Lebensmittel',
+  rezept: 'Foto für dein Rezept',
+};
+
+const BILD_FILTER: Electron.FileFilter[] = [{ name: 'Bilder', extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'] }];
+
+export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDienst, rezepte: RezeptDienst, teller: TellerDienst, tagebuch: TagebuchDienst, sicherungen: Sicherungen, fotos: FotoDienst, sehen: Sehen, handy: HandySeite, info: ProgrammInfo): void {
+  ipcMain.handle('fotos:waehlen', (e, zweck: unknown) =>
+    alsAntwort(async () => {
+      const wofuer = zweckPruefen(zweck);
+      const fenster = BrowserWindow.fromWebContents(e.sender);
+      const optionen: Electron.OpenDialogOptions = { title: 'Foto wählen', buttonLabel: 'Dieses Foto nehmen', properties: ['openFile'], filters: BILD_FILTER };
+      const wahl = fenster ? await dialog.showOpenDialog(fenster, optionen) : await dialog.showOpenDialog(optionen);
+      const pfad = wahl.filePaths[0];
+      if (wahl.canceled || !pfad) return null;
+      return fotos.auswerten(pfad, wofuer);
+    }),
+  );
+  ipcMain.handle('fotos:einlesen', (_e, daten: unknown, zweck: unknown) =>
+    alsAntwort(() => {
+      if (!(daten instanceof Uint8Array)) throw new StarkFehler('UNGUELTIG', 'Das ist kein Bild.');
+      return fotos.ausDaten(daten, zweckPruefen(zweck));
+    }),
+  );
+  ipcMain.handle('fotos:barcode', (_e, code: unknown) => alsAntwort(() => fotos.barcodeNachschlagen(code)));
+  ipcMain.handle('fotos:handyOeffnen', (e, zweck: unknown) =>
+    alsAntwort(async () => {
+      const wofuer = zweckPruefen(zweck);
+      // STARKMACHER_HANDY_ADRESSE: Die Klick-Tests bleiben auf diesem Mac und gehen nie ins WLAN.
+      const adresse = process.env.STARKMACHER_HANDY_ADRESSE ?? lokaleAdresse();
+      if (!adresse) throw new StarkFehler('UNGUELTIG', 'Dein Mac ist gerade in keinem WLAN. Bitte verbinde ihn und versuch es noch einmal.');
+      const senden = (ereignis: HandyEreignis) => {
+        if (!e.sender.isDestroyed()) e.sender.send('fotos:handy', ereignis);
+      };
+      const url = await handy.oeffnen({
+        titel: HANDY_TITEL[wofuer],
+        adresse,
+        beiBild: (daten) => {
+          void alsAntwort(() => fotos.ausDaten(daten, wofuer)).then((a) => senden(a.ok ? { art: 'foto', ergebnis: a.wert } : { art: 'fehler', meldung: a.meldung }));
+        },
+        beiEnde: () => senden({ art: 'ende' }),
+      });
+      return { adresse: url };
+    }),
+  );
+  ipcMain.on('fotos:handySchliessen', () => handy.schliessen());
+
   ipcMain.handle('teller:liste', (_e, text: unknown) => alsAntwort(() => teller.liste(text)));
   ipcMain.handle('teller:holen', (_e, id: unknown) => alsAntwort(() => teller.holen(id)));
   ipcMain.handle('teller:speichern', (_e, eingabe: unknown) => alsAntwort(() => teller.speichern(eingabe)));
@@ -93,12 +143,12 @@ export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDie
         title: 'Foto wählen',
         buttonLabel: 'Dieses Foto nehmen',
         properties: ['openFile'],
-        filters: [{ name: 'Bilder', extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'] }],
+        filters: BILD_FILTER,
       };
       const wahl = fenster ? await dialog.showOpenDialog(fenster, optionen) : await dialog.showOpenDialog(optionen);
       const pfad = wahl.filePaths[0];
       if (wahl.canceled || !pfad) return null;
-      return fotoEinlesen(pfad, dienst.fotoOrdner);
+      return fotoEinlesen(pfad, dienst.fotoOrdner, sehen);
     }),
   );
   ipcMain.handle('lebensmittel:fotoLesen', (_e, name: unknown) => alsAntwort(() => fotoLesen(name, dienst.fotoOrdner)));

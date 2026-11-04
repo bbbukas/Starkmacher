@@ -237,6 +237,7 @@ export function LebensmittelDetail({ id }: { id: string }) {
           <p className="unter-titel">
             <Herkunftsmarke lm={lm} />
             {lm.marke && <span>{lm.marke}</span>}
+            {lm.barcode && <span>Barcode {lm.barcode}</span>}
             {lm.packung !== null && (
               <span className="leise">
                 Packung {zahlText(lm.packung)} {lm.basis}

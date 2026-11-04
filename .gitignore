@@ -18,6 +18,9 @@ sicherungen/
 Sicherungen/
 Starkmacher-Sicherung-*
 
+# Wird gebaut (npm run sehen)
+ressourcen/starkmacher-sehen
+
 # Werkzeuge und Mac
 .claude/settings.local.json
 .DS_Store
