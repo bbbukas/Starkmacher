@@ -202,11 +202,9 @@ describe('Lücken', () => {
     for (const c of ['VITD', 'FD', 'CLD', 'WATER']) expect(codes, c).not.toContain(c);
   });
   it('ausgeblendete Nährstoffe auch nicht', () => {
-    const codes = tagesLuecken(tagessumme([]), bedarf, ['ID', 'FIBT', 'F20:5CN3']).map((x) => x.code);
-    expect(codes).not.toContain('ID');
+    const codes = tagesLuecken(tagessumme([]), bedarf, ['FIBT']).map((x) => x.code);
     expect(codes).not.toContain('FIBT');
-    expect(codes).not.toContain('EPA_DHA');
-    expect(tagesLuecken(tagessumme([]), bedarf).map((x) => x.code)).toContain('EPA_DHA');
+    expect(tagesLuecken(tagessumme([]), bedarf).map((x) => x.code)).toContain('FIBT');
   });
   it('zuerst, was zum Minimum fehlt, danach, was zum Optimum fehlt', () => {
     const ziel = bedarf.ziele.PROT625!;
@@ -221,8 +219,8 @@ describe('Lücken', () => {
     expect(tagesLuecken(tagessumme([eintrag(allesVoll(), { menge: 100 })]), bedarf)).toEqual([]);
   });
   it('merkt sich, wo Angaben fehlen', () => {
-    const l = tagesLuecken(tagessumme([eintrag(lm({ name: 'Ohne Jod', werte: { ENERCC: 100 } }))]), bedarf);
-    expect(l.find((x) => x.code === 'ID')?.fehltBei).toEqual(['Ohne Jod']);
+    const l = tagesLuecken(tagessumme([eintrag(lm({ name: 'Ohne Ballaststoffe', werte: { ENERCC: 100 } }))]), bedarf);
+    expect(l.find((x) => x.code === 'FIBT')?.fehltBei).toEqual(['Ohne Ballaststoffe']);
   });
   it('Satz: Kalorien, Eiweiß und die größten Lücken', () => {
     const s = tagessumme([]);

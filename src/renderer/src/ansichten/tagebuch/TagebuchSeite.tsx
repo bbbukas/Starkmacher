@@ -5,6 +5,7 @@ import type { Bedarf } from '@shared/bedarf';
 import { tagText, zahlText } from '@shared/format';
 import { datumErlaubt, datumVon } from '@shared/profil';
 import { eintragWert, kcalFrei, MAHLZEITEN, mengenText, tagesLuecken, tagesMotto, tagessumme, type Mahlzeit, type Tagessumme, type TagebuchEintrag } from '@shared/tagebuch';
+import { knappeWochenwerte, wochenstand } from '@shared/woche';
 import { api } from '../../api';
 import { useDaten } from '../../daten/DatenKontext';
 import { useMeldungen } from '../../komponenten/Meldungen';
@@ -108,6 +109,7 @@ export function TagebuchSeite({ datumImPfad }: { datumImPfad: string | undefined
   const heute = datumVon(new Date());
   const datum = datumErlaubt(datumImPfad) ? datumImPfad : heute;
   const [eintraege, setEintraege] = useState<TagebuchEintrag[] | null>(null);
+  const [wocheEintraege, setWocheEintraege] = useState<TagebuchEintrag[]>([]);
   const [antwort, setAntwort] = useState<VorschlagsAntwort | null>(null);
   const [eintragenIn, setEintragenIn] = useState<Mahlzeit | null>(null);
   const [offen, setOffen] = useState<TagebuchEintrag | null>(null);
@@ -115,8 +117,10 @@ export function TagebuchSeite({ datumImPfad }: { datumImPfad: string | undefined
 
   const laden = useCallback(() => {
     void api.tagebuch.tag(datum).then((a) => {
-      if (a.ok && a.wert.datum === datum) setEintraege(a.wert.eintraege);
-      else if (!a.ok) zeigen({ art: 'fehler', text: a.meldung });
+      if (a.ok && a.wert.datum === datum) {
+        setEintraege(a.wert.eintraege);
+        setWocheEintraege(a.wert.woche);
+      } else if (!a.ok) zeigen({ art: 'fehler', text: a.meldung });
     });
     // Die Vorschläge rechnet der Hauptprozess mit dem gespeicherten Profil. Eine gerade gemachte Änderung muss also erst dort ankommen.
     void speichernJetzt()
@@ -132,10 +136,13 @@ export function TagebuchSeite({ datumImPfad }: { datumImPfad: string | undefined
   const summe = useMemo(() => tagessumme(eintraege ?? []), [eintraege]);
   const ausgeblendet = stand?.profil.ausgeblendet ?? [];
   const luecken = useMemo(() => (bedarf ? tagesLuecken(summe, bedarf, ausgeblendet) : []), [summe, bedarf, ausgeblendet]);
+  const woche = useMemo(() => wochenstand(wocheEintraege, datum, heute), [wocheEintraege, datum, heute]);
+  const knappe = useMemo(() => (bedarf ? knappeWochenwerte(woche, bedarf, ausgeblendet) : []), [woche, bedarf, ausgeblendet]);
 
   const wechseln = (neu: string) => {
     if (datumErlaubt(neu)) {
       setEintraege(null);
+      setWocheEintraege([]);
       setAntwort(null);
       gehe(pfade.tagebuchTag(neu));
     }
@@ -176,8 +183,8 @@ export function TagebuchSeite({ datumImPfad }: { datumImPfad: string | undefined
           ))}
         </div>
         <div className="stapel">
-          {bedarf && eintraege && <WasFehlt datum={datum} istHeute={datum === heute} summe={summe} bedarf={bedarf} luecken={luecken} antwort={antwort} onGeaendert={laden} />}
-          {bedarf && <TagesGruppen summe={summe} bedarf={bedarf} ausgeblendet={ausgeblendet} />}
+          {bedarf && eintraege && <WasFehlt datum={datum} istHeute={datum === heute} summe={summe} bedarf={bedarf} luecken={luecken} woche={woche} knappe={knappe} antwort={antwort} onGeaendert={laden} />}
+          {bedarf && <TagesGruppen summe={summe} woche={woche} bedarf={bedarf} ausgeblendet={ausgeblendet} />}
         </div>
       </div>
 

@@ -20,6 +20,9 @@
  * - Folat: EFSA 2014 statt DGE 2015, weil der BLS Folat genauso rechnet wie die
  *   EFSA (Folsäure × 1,7). Die Nordischen Empfehlungen 2023 bestätigen den Wert.
  *
+ * Wochenschnitt (Lukas, 04.11.2026): Vitamine und Mineralstoffe stehen hier als Tageswert, zählen im Tagebuch aber im
+ * Schnitt der Woche, weil die Referenzwerte nicht an jedem einzelnen Tag erfüllt werden müssen (DGE 2018, DGE 2012). Siehe woche.ts.
+ *
  * Annahmen, wo die Quelle nach etwas unterscheidet, das Starkmacher nicht abfragt:
  * - Zink: Wert für mittlere Phytatzufuhr (bei viel Vollkorn und Hülsenfrüchten
  *   nennt die DGE 16 mg statt 14 mg bzw. 10 mg statt 8 mg).
@@ -32,6 +35,7 @@ export const QUELLEN = [
   { kurz: 'EFSA', titel: 'EFSA: Dietary Reference Values for nutrients, Summary report (2017), dazu Natrium und Chlorid (2019), Chrom (2014)', adresse: 'efsa.europa.eu' },
   { kurz: 'EFSA, Höchstwerte', titel: 'EFSA: Overview on Tolerable Upper Intake Levels, Version 11, August 2025', adresse: 'efsa.europa.eu' },
   { kurz: 'NNR', titel: 'Nordic Nutrition Recommendations 2023, Nordic Council of Ministers', adresse: 'pub.norden.org/nord2023-003' },
+  { kurz: 'DGE, Woche', titel: 'DGE: Ausgewählte Fragen und Antworten zu den Referenzwerten, Oktober 2018, Frage 4: Der Durchschnitt einer Woche reicht', adresse: 'dge.de' },
   { kurz: 'WHO', titel: 'WHO-Leitlinien zu Fett und Kohlenhydraten (2023), Natrium (2012), freiem Zucker (2015)', adresse: 'who.int' },
 ] as const;
 

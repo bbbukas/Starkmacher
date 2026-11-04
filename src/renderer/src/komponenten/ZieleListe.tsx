@@ -51,7 +51,7 @@ function zusatzZiele(bedarf: Bedarf): Partial<Record<GruppenId, readonly ZusatzZ
         wert: `${zahlText(EPA_DHA_MINIMUM_MG)} mg`,
         optimum: `${zahlText(EPA_DHA_OPTIMUM_MG.von)}–${zahlText(EPA_DHA_OPTIMUM_MG.bis)} mg`,
         optimumQuelle: EPA_DHA_OPTIMUM_MG.quelle,
-        hinweis: 'Am besten aus Fisch. Kapseln mit 1 g senkten bei Gesunden schwere Herzereignisse nicht sicher (VITAL 2019), über 1 g gab es deutlich mehr Vorhofflimmern (Gencer 2021).',
+        hinweis: 'Zählt im Schnitt der Woche, ein bis zwei Portionen fetter Fisch reichen meist. Am besten aus Fisch. Kapseln mit 1 g senkten bei Gesunden schwere Herzereignisse nicht sicher (VITAL 2019), über 1 g gab es deutlich mehr Vorhofflimmern (Gencer 2021).',
       },
     ],
   };
@@ -89,6 +89,7 @@ export function ZieleListe({ bedarf, ausgeblendet }: { bedarf: Bedarf; ausgeblen
               <ChevronDown className="i pfeil" aria-hidden />
             </summary>
             <div className="zeilen">
+              {(gruppe.id === 'vitamine' || gruppe.id === 'mineralstoffe') && <p className="gruppe-hinweis">Werte je Tag. Es reicht, sie im Schnitt der Woche zu erreichen (DGE 2018), deshalb zählt das Tagebuch hier die Woche.</p>}
               {dazu.map((z) => (
                 <div key={z.name} className="ziel-zeile">
                   <span className="name">

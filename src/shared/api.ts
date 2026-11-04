@@ -14,6 +14,8 @@ import type { Vorschlag } from './vorschlaege';
 export interface TagAntwort {
   datum: string;
   eintraege: TagebuchEintrag[];
+  /** Alle Einträge der Woche dieses Tages, Montag bis Sonntag, für den Wochenstand. */
+  woche: TagebuchEintrag[];
 }
 
 export interface VorschlagsAntwort {

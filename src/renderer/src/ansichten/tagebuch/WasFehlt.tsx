@@ -4,6 +4,7 @@ import type { Bedarf } from '@shared/bedarf';
 import { zahlText } from '@shared/format';
 import { lueckenSatz, MAHLZEITEN, mahlzeitNachUhrzeit, mengenText, type Luecke, type Mahlzeit, type Tagessumme } from '@shared/tagebuch';
 import type { Vorschlag } from '@shared/vorschlaege';
+import { wochenSatz, type KnapperWert, type WochenStand } from '@shared/woche';
 import { api } from '../../api';
 import { useMeldungen } from '../../komponenten/Meldungen';
 
@@ -17,8 +18,8 @@ function woher(v: Vorschlag): string {
 }
 
 /** Was heute noch fehlt und womit es sich füllen lässt. Ein Klick trägt den Vorschlag ein (Bauauftrag Abschnitt 8). */
-export function WasFehlt(props: { datum: string; istHeute: boolean; summe: Tagessumme; bedarf: Bedarf; luecken: readonly Luecke[]; antwort: VorschlagsAntwort | null; onGeaendert(): void }) {
-  const { datum, istHeute, summe, bedarf, luecken, antwort } = props;
+export function WasFehlt(props: { datum: string; istHeute: boolean; summe: Tagessumme; bedarf: Bedarf; luecken: readonly Luecke[]; woche: WochenStand; knappe: readonly KnapperWert[]; antwort: VorschlagsAntwort | null; onGeaendert(): void }) {
+  const { datum, istHeute, summe, bedarf, luecken, woche, knappe, antwort } = props;
   const { zeigen } = useMeldungen();
   const [mahlzeit, setMahlzeit] = useState<Mahlzeit>(istHeute ? mahlzeitNachUhrzeit(new Date()) : 'snacks');
   const [traegtEin, setTraegtEin] = useState<string | null>(null);
@@ -40,12 +41,13 @@ export function WasFehlt(props: { datum: string; istHeute: boolean; summe: Tages
     });
   };
 
-  const unsicher = luecken.slice(0, 6).some((l) => l.fehltBei.length > 0);
+  const unsicher = [...luecken.slice(0, 6), ...knappe.slice(0, 4)].some((l) => l.fehltBei.length > 0);
   const vorschlaege = antwort?.vorschlaege ?? [];
   return (
     <section className="fehlt" aria-label="Was heute noch fehlt">
       <h2>{istHeute ? 'Was heute noch fehlt' : 'Was an diesem Tag noch fehlt'}</h2>
       <p className="kurz">{lueckenSatz(summe, bedarf, luecken)}</p>
+      <p className="woche-satz">{wochenSatz(woche, knappe)}</p>
       {unsicher && <p className="fehlt-hinweis">Bei manchen Einträgen fehlen Angaben zu einzelnen Nährstoffen. Die echte Lücke kann also kleiner sein.</p>}
       {vorschlaege.length > 0 && (
         <div className="fehlt-wahl">

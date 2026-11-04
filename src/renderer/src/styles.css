@@ -240,7 +240,8 @@ small { font-size: 0.82em; }
 .dazu:hover { background: var(--warm); color: var(--tinte); }
 .fehlt { background: #f0fbf8; border-radius: var(--rund); padding: 16px; box-shadow: inset 0 0 0 2px #bfe9e0; }
 .fehlt h2 { margin: 0; }
-.fehlt .kurz { margin: 6px 0 10px; font-size: 15.5px; }
+.fehlt .kurz { margin: 6px 0 6px; font-size: 15.5px; }
+.fehlt .woche-satz { margin: 0 0 10px; font-size: 13.5px; color: var(--tinte2); }
 .fehlt-hinweis { margin: 0 0 10px; font-size: 13px; color: var(--tinte2); }
 .fehlt-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13.5px; font-weight: 700; }
 .fehlt-wahl select { padding: 4px 8px; border: 1.5px solid #bfe9e0; border-radius: 10px; background: #fff; font: inherit; color: inherit; }
@@ -251,6 +252,7 @@ small { font-size: 0.82em; }
 .wirkung { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .wirkung span { padding: 1px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--farbe) 72%, #000); background: color-mix(in srgb, var(--farbe) 14%, #fff); }
 .eintragen { grid-column: 2; grid-row: 1 / 3; padding: 7px 14px; font-size: 13.5px; }
+.gruppe-hinweis { margin: 0 0 6px; font-size: 12.5px; color: var(--tinte2); }
 .zeile { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--farbe) 16%, #fff); font-size: 13.5px; }
 .zeile .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .zeile .menge { text-align: right; font-weight: 700; white-space: nowrap; }

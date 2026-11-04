@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { bedarfBerechnen, type Bedarf } from '@shared/bedarf';
 import { GRUNDWERTE, standardUmrechnung } from '@shared/einheiten';
 import { tagesLuecken, tagessumme, type TagebuchEintrag } from '@shared/tagebuch';
+import { wochenLueckenFuerTag, wochenstand } from '@shared/woche';
 import { FREIER_ZUCKER_GRENZE, grenzenAus, hoechstenGramm, mengeFuerVorschlag, taugtAlsVorschlag, typischePortionG, vorschlagen, type Grenze, type VorschlagKandidat } from '@shared/vorschlaege';
 
 const bedarf: Bedarf = bedarfBerechnen({ geschlecht: 'maennlich', alter: 40, groesseCm: 180, gewichtKg: 70, aktivitaet: 'sitzend', sport: false, ziel: 'halten', tempo: 'sanft' });
@@ -46,7 +47,10 @@ const BESTAND = [SKYR, LACHS, LINSE, RAPSOEL, CHIPS];
 
 const tag = (eintraege: readonly TagebuchEintrag[]) => {
   const summe = tagessumme(eintraege);
-  return { summe, luecken: tagesLuecken(summe, bedarf), grenzen: grenzenAus(summe, bedarf) };
+  // Alle Einträge stehen am selben Tag. Der Wochenanteil ist dann der volle Tageswert, wie am Montag.
+  const datum = eintraege[0]?.datum ?? '2026-11-02';
+  const woche = wochenstand(eintraege, datum, datum);
+  return { summe, luecken: [...tagesLuecken(summe, bedarf), ...wochenLueckenFuerTag(woche, bedarf)], grenzen: grenzenAus(summe, bedarf) };
 };
 
 describe('Grenzen', () => {

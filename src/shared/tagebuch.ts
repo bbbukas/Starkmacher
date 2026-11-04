@@ -347,6 +347,18 @@ export function stufeVon(menge: number, ziel: StufenZiel | null | undefined): St
 
 export const EPA_DHA_ZIEL = { von: EPA_DHA_MINIMUM_MG, optimum: EPA_DHA_OPTIMUM_MG } as const;
 
+const WOCHEN_GRUPPEN: readonly GruppenId[] = ['vitamine', 'mineralstoffe'];
+
+/**
+ * Zählt dieser Nährstoff im Schnitt der Woche statt am Tag (Lukas, 04.11.2026, siehe woche.ts)? Das gilt für Vitamine und
+ * Mineralstoffe mit Mindestwert sowie für EPA und DHA. Reine Obergrenzen wie Salz und Natrium bleiben beim Tag.
+ */
+export function zaehltWoechentlich(code: string, ziel: { von?: number | undefined } | undefined): boolean {
+  if (code === EPA_DHA_CODE) return true;
+  const n = naehrstoff(code);
+  return n !== undefined && WOCHEN_GRUPPEN.includes(n.gruppe) && ziel?.von !== undefined;
+}
+
 export const istGeschafft = (stufe: Stufe) => stufe === 'minimum' || stufe === 'optimum' || stufe === 'darueber';
 
 /** Für den Balken: Wie viel vom Bezugswert ist erreicht, höchstens 1? */
@@ -393,7 +405,7 @@ const KCAL_SPIELRAUM = 50;
 /** Im Satz klingt der kurze Name besser als die Fachbezeichnung aus der Liste. */
 const KURZNAMEN: Readonly<Record<string, string>> = { FIBT: 'Ballaststoffe', FAMS: 'einfach ungesättigte Fettsäuren', FAPU: 'mehrfach ungesättigte Fettsäuren', FAPUN3: 'Omega-3', 'F18:2CN6': 'Linolsäure', 'F18:3CN3': 'Alpha-Linolensäure' };
 
-function lueckeAus(code: string, n: Pick<Naehrstoff, 'name' | 'gruppe' | 'einheit' | 'zeigeInMg'>, s: SummenWert, ziel: { von: number; optimum?: { von: number } | undefined }): Luecke | null {
+export function lueckeAus(code: string, n: Pick<Naehrstoff, 'name' | 'gruppe' | 'einheit' | 'zeigeInMg'>, s: SummenWert, ziel: { von: number; optimum?: { von: number } | undefined }): Luecke | null {
   const bezug = s.menge < ziel.von ? ziel.von : ziel.optimum?.von;
   if (bezug === undefined || s.menge >= bezug) return null;
   const fehlt = bezug - s.menge;
@@ -411,23 +423,19 @@ function lueckeAus(code: string, n: Pick<Naehrstoff, 'name' | 'gruppe' | 'einhei
   };
 }
 
-const EPA_DHA_NAEHRSTOFF = { name: 'EPA und DHA', gruppe: 'fettsaeuren', einheit: 'mg' } as const;
+export const EPA_DHA_NAEHRSTOFF = { name: 'EPA und DHA', gruppe: 'fettsaeuren', einheit: 'mg' } as const;
 
 /**
  * Die Lücken des Tages: zuerst, was zum Minimum fehlt, die größten vorn, danach, was zum Optimum fehlt.
- * Vitamin D, Fluorid, Chlorid und Wasser sind nie eine Lücke. Ausgeblendetes auch nicht.
+ * Vitamine, Mineralstoffe sowie EPA und DHA zählen im Schnitt der Woche und stehen deshalb nicht hier (woche.ts).
+ * Wasser ist nie eine Lücke, Ausgeblendetes auch nicht.
  */
 export function tagesLuecken(summe: Tagessumme, bedarf: Bedarf, ausgeblendet: readonly string[] = []): Luecke[] {
   const liste: Luecke[] = [];
   for (const n of NAEHRSTOFFE) {
     const ziel = bedarf.ziele[n.code];
-    if (!ziel || ziel.von === undefined || ziel.keineLuecke || NICHT_ALS_LUECKE.has(n.code) || ausgeblendet.includes(n.code)) continue;
+    if (!ziel || ziel.von === undefined || ziel.keineLuecke || NICHT_ALS_LUECKE.has(n.code) || ausgeblendet.includes(n.code) || zaehltWoechentlich(n.code, ziel)) continue;
     const luecke = lueckeAus(n.code, n, summe.werte[n.code]!, { von: ziel.von, optimum: ziel.optimum });
-    if (luecke) liste.push(luecke);
-  }
-  const fettOffen = !ausgeblendet.includes('F20:5CN3') && !ausgeblendet.includes('F22:6CN3');
-  if (fettOffen) {
-    const luecke = lueckeAus(EPA_DHA_CODE, EPA_DHA_NAEHRSTOFF, summe.epaDhaMg, EPA_DHA_ZIEL);
     if (luecke) liste.push(luecke);
   }
   const rang = (l: Luecke) => (1 - l.erreicht) * l.gewicht;
@@ -440,7 +448,9 @@ export function tagesLuecken(summe: Tagessumme, bedarf: Bedarf, ausgeblendet: re
 /** Wie viel Energie heute noch frei ist. */
 export const kcalFrei = (summe: Tagessumme, bedarf: Bedarf) => bedarf.kcal - summe.werte.ENERCC!.menge;
 
-/** „Noch etwa 850 kcal und 38 g Eiweiß, dazu 13 g Ballaststoffe, 460 mg Calcium und 88 µg Jod.“ */
+/** „Noch etwa 850 kcal und 38 g Eiweiß, dazu 13 g Ballaststoffe und 20 g Fett.“ */
+export const aufzaehlung = (t: readonly string[]) => (t.length <= 1 ? (t[0] ?? '') : `${t.slice(0, -1).join(', ')} und ${t.at(-1)}`);
+
 export function lueckenSatz(summe: Tagessumme, bedarf: Bedarf, luecken: readonly Luecke[], anzahl = 4): string {
   const frei = kcalFrei(summe, bedarf);
   const offen = frei >= KCAL_SPIELRAUM ? `${zahlText(Math.round(frei / 10) * 10)} kcal` : null;
@@ -448,7 +458,6 @@ export function lueckenSatz(summe: Tagessumme, bedarf: Bedarf, luecken: readonly
   // Eiweiß steht vorn, wenn es fehlt: Danach richtet sich das Essen am ehesten.
   const reihe = (minimum.length > 0 ? minimum : luecken).slice().sort((a, b) => Number(b.code === 'PROT625') - Number(a.code === 'PROT625'));
   const liste = reihe.slice(0, anzahl).map((l) => l.text);
-  const aufzaehlung = (t: readonly string[]) => (t.length <= 1 ? (t[0] ?? '') : `${t.slice(0, -1).join(', ')} und ${t.at(-1)}`);
 
   if (minimum.length === 0) {
     if (liste.length === 0) return offen ? `Alles geschafft. Es sind noch etwa ${offen} frei.` : 'Alles geschafft, heute fehlt dir nichts.';
@@ -463,10 +472,10 @@ export function lueckenSatz(summe: Tagessumme, bedarf: Bedarf, luecken: readonly
 /** Ein freundlicher Satz neben dem Datum. Nie belehrend. */
 export function tagesMotto(summe: Tagessumme, bedarf: Bedarf, luecken: readonly Luecke[]): string {
   if (summe.anzahl === 0) return 'Ein neuer Tag, alles ist offen.';
-  const ziele = Object.values(bedarf.ziele).filter((z) => z.von !== undefined && !z.keineLuecke).length;
+  const ziele = Object.values(bedarf.ziele).filter((z) => z.von !== undefined && !z.keineLuecke && !zaehltWoechentlich(z.code, z)).length;
   const offen = luecken.filter((l) => l.stufe === 'minimum').length;
   const eiweiss = luecken.find((l) => l.code === 'PROT625' && l.stufe === 'minimum');
-  if (offen === 0) return 'Stark! Alle Mindestwerte sind geschafft.';
+  if (offen === 0) return 'Stark! Alle Tagesziele sind geschafft.';
   if (eiweiss === undefined) return 'Läuft gut. Dein Eiweiß-Minimum ist schon geschafft.';
   if (offen < ziele / 2) return 'Läuft gut heute. Mehr als die Hälfte ist geschafft.';
   return 'Guter Anfang. Der Rest kommt über den Tag.';

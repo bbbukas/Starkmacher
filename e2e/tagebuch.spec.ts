@@ -52,13 +52,18 @@ test('Einen Tag eintragen: Summe, Stufen, Ändern, Löschen', async () => {
   await expect(seite.locator('details.g-vitamine .zeile', { hasText: 'Vitamin B12' }).locator('.lage')).toContainText('noch');
   await expect(seite.locator('details.g-vitamine .zeile', { hasText: /^Vitamin DE/ }).locator('.lage')).toContainText('kommt vor allem von der Sonne');
   await expect(seite.locator('.fehlt .kurz')).not.toContainText('Vitamin D');
+  // Vitamine und Mineralstoffe zählen in der Woche: Sie stehen nicht mehr bei dem, was heute fehlt.
+  await expect(seite.locator('.fehlt .kurz')).not.toContainText(/Calcium|Jod|Vitamin/);
+  await expect(seite.locator('details.g-mineralstoffe .stand')).toContainText(/^Woche: \d+ von \d+$/);
+  await expect(seite.locator('details.g-mineralstoffe .gruppe-hinweis')).toContainText('Schnitt der Woche');
+  await expect(seite.locator('details.g-mineralstoffe .zeile', { hasText: 'Calcium' }).locator('.lage')).toContainText(/noch .* bis (Sonntag|heute Abend).*· heute/);
+  await expect(seite.locator('.fehlt .woche-satz')).toBeVisible();
 
-  // Minimum erreicht: Das soll man sehen. 500 g Lachs bringen Vitamin B12 und EPA und DHA über das Minimum.
+  // Geschafft: Das soll man sehen. 500 g Lachs bringen EPA und DHA für die ganze Woche.
   await eintragen(seite, 'Abend', 'lachs gegrillt', 'Lachs gegrillt', '500', 'g');
-  await expect(seite.locator('details.g-vitamine .zeile', { hasText: 'Vitamin B12' }).locator('.lage')).toContainText('✓ Minimum erreicht');
   await seite.locator('details.g-fettsaeuren summary').click();
-  await expect(seite.locator('details.g-fettsaeuren .zeile', { hasText: 'EPA und DHA zusammen' }).locator('.lage')).not.toContainText('noch 250');
-  await expect(seite.locator('details.g-vitamine .stand')).toContainText(/\d+ von \d+ geschafft/);
+  await expect(seite.locator('details.g-fettsaeuren .zeile', { hasText: 'EPA und DHA zusammen' }).locator('.lage')).toContainText('✓');
+  await expect(seite.locator('details.g-vitamine .stand')).toContainText(/^Woche: [1-9]\d* von \d+$/);
   await foto(seite, '32-tag-gefuellt', true);
 
   // Ändern: Menge und Mahlzeit
@@ -83,6 +88,50 @@ test('Einen Tag eintragen: Summe, Stufen, Ändern, Löschen', async () => {
   await expect(zuletzt.getByText('Lachs gegrillt')).toHaveCount(0);
   await seite.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click();
 
+  await app.close();
+  testordnerLoeschen(ordner);
+});
+
+test('Die Woche: Mikros zählen über mehrere Tage, ausgelassene Tage zählen nicht', async () => {
+  const ordner = testordnerAnlegen();
+  const { app, seite } = await programmStarten(ordner);
+  await ersterStart(seite);
+
+  // Eine vergangene Woche, Montag 5. bis Sonntag 11. Januar 2026
+  await seite.evaluate(() => {
+    window.location.hash = '#/tagebuch/2026-01-05';
+  });
+  await expect(seite.locator('.tag h1')).toContainText('5. Januar');
+  await eintragen(seite, 'Mittag', 'skyr', 'Skyr', '200', 'g');
+  const calcium = seite.locator('details.g-mineralstoffe .zeile', { hasText: 'Calcium' });
+  const hinweis = seite.locator('details.g-mineralstoffe .gruppe-hinweis');
+  await expect(hinweis).toContainText('1 Tag eingetragen und 6 ohne Eintrag zählen nicht.');
+  const nachEinemTag = await calcium.locator('.menge').innerText();
+  await expect(calcium.locator('.lage')).toContainText('in dieser Woche fehlten');
+  await expect(seite.locator('.fehlt .woche-satz')).toContainText('In dieser Woche fehlten');
+
+  // Der nächste Tag zählt zur selben Woche: Menge und Wochenziel steigen.
+  await seite.getByRole('button', { name: 'Tag danach' }).click();
+  await expect(seite.locator('.tag h1')).toContainText('6. Januar');
+  await expect(calcium.locator('.lage')).toContainText('an diesem Tag 0 mg');
+  await eintragen(seite, 'Mittag', 'skyr', 'Skyr', '200', 'g');
+  await expect(hinweis).toContainText('2 Tage eingetragen und 5 ohne Eintrag zählen nicht.');
+  await expect(calcium.locator('.menge')).not.toHaveText(nachEinemTag);
+  await expect(calcium.locator('.lage')).toContainText(/an diesem Tag [1-9]/);
+  await foto(seite, '35-woche-vorbei');
+
+  // Eine Woche später beginnt alles neu.
+  await seite.evaluate(() => {
+    window.location.hash = '#/tagebuch/2026-01-12';
+  });
+  await expect(seite.locator('.tag h1')).toContainText('12. Januar');
+  await expect(hinweis).toContainText('0 Tage eingetragen');
+
+  // Die laufende Woche
+  await seite.getByRole('button', { name: 'Zu heute' }).click();
+  await eintragen(seite, 'Mittag', 'skyr', 'Skyr', '200', 'g');
+  await expect(calcium.locator('.lage')).toContainText(/noch .* bis (Sonntag|heute Abend)/);
+  await foto(seite, '36-woche-laeuft');
   await app.close();
   testordnerLoeschen(ordner);
 });

@@ -7,7 +7,7 @@ import type { TagAntwort, VorschlagsAntwort } from '@shared/api';
 import { bedarfAusProfil } from '@shared/bedarf';
 import { StarkFehler } from '@shared/fehler';
 import { blsId, werteJe100g, type LebensmittelKurz } from '@shared/lebensmittel';
-import { datumErlaubt } from '@shared/profil';
+import { datumErlaubt, datumVon } from '@shared/profil';
 import { istRezeptId } from '@shared/rezepte';
 import {
   bestandteilAnlegen,
@@ -29,6 +29,7 @@ import {
 } from '@shared/tagebuch';
 import { istTellerId, postenPruefen, ROLLEN, TELLER_PREFIX, type Rolle } from '@shared/teller';
 import { grenzenAus, taugtAlsVorschlag, vorschlagen, type VorschlagKandidat } from '@shared/vorschlaege';
+import { wochenLueckenFuerTag, wochenstand, wochenTage } from '@shared/woche';
 import type { Grundbestand } from './bls';
 import type { Datenquelle } from './datenquelle';
 import type { LebensmittelDienst } from './lebensmittelDienst';
@@ -52,7 +53,12 @@ export class TagebuchDienst {
 
   tag(datum: unknown): TagAntwort {
     if (!datumErlaubt(datum)) throw new StarkFehler('UNGUELTIG', 'Das Datum stimmt nicht.');
-    return { datum, eintraege: this.quelle().tagebuchTag(datum) };
+    return { datum, eintraege: this.quelle().tagebuchTag(datum), woche: this.eintraegeDerWoche(datum) };
+  }
+
+  private eintraegeDerWoche(datum: string): TagebuchEintrag[] {
+    const quelle = this.quelle();
+    return wochenTage(datum).flatMap((tag) => quelle.tagebuchTag(tag));
   }
 
   eintragen(roh: unknown): TagebuchEintrag {
@@ -188,7 +194,8 @@ export class TagebuchDienst {
     const bedarf = bedarfAusProfil(profil, gewichte, this.jahr());
     if (!bedarf) return { vorschlaege: [], kalorienErreicht: false };
     const summe = tagessumme(quelle.tagebuchTag(datum));
-    const luecken = tagesLuecken(summe, bedarf, profil.ausgeblendet);
+    const woche = wochenstand(this.eintraegeDerWoche(datum), datum, datumVon(new Date(this.uhr())));
+    const luecken = [...tagesLuecken(summe, bedarf, profil.ausgeblendet), ...wochenLueckenFuerTag(woche, bedarf, profil.ausgeblendet)];
     const grenzen = grenzenAus(summe, bedarf);
 
     const gegessen = new Set(quelle.tagebuchZuletzt(40));
