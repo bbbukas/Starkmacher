@@ -191,11 +191,12 @@ export class SqliteQuelle implements Datenquelle {
     return { profil: zeile ? profilAus(zeile) : leeresProfil(), gewichte: gewichte.map((g) => ({ datum: g.datum, kg: g.kg })) };
   }
 
-  speichern({ profil, gewicht }: { profil?: Profil; gewicht?: Gewicht }): void {
+  speichern({ profil, gewicht, gewichtWeg }: { profil?: Profil; gewicht?: Gewicht; gewichtWeg?: string }): void {
     this.inTransaktion(() => {
       // Ein Gewicht hängt an einem Profil, also gibt es das Profil spätestens jetzt.
       if (profil) this.profilSchreiben(profil);
       else if (gewicht) this.db.prepare(`INSERT OR IGNORE INTO profile (id, geaendert_am) VALUES (?, ?)`).run(PROFIL_ID, this.uhr());
+      if (gewichtWeg) this.db.prepare('DELETE FROM gewichte WHERE profil_id = ? AND datum = ?').run(PROFIL_ID, gewichtWeg);
       if (gewicht) {
         this.db
           .prepare('INSERT INTO gewichte (profil_id, datum, kg) VALUES (?, ?, ?) ON CONFLICT (profil_id, datum) DO UPDATE SET kg = excluded.kg')
@@ -277,6 +278,11 @@ export class SqliteQuelle implements Datenquelle {
 
   tagebuchTag(datum: string): TagebuchEintrag[] {
     const zeilen = this.db.prepare('SELECT daten FROM tagebuch WHERE profil_id = ? AND datum = ? ORDER BY erstellt_am, id').all(PROFIL_ID, datum) as unknown as { daten: string }[];
+    return zeilen.map((z) => JSON.parse(z.daten) as TagebuchEintrag);
+  }
+
+  tagebuchZeitraum(von: string, bis: string): TagebuchEintrag[] {
+    const zeilen = this.db.prepare('SELECT daten FROM tagebuch WHERE profil_id = ? AND datum BETWEEN ? AND ? ORDER BY datum, erstellt_am, id').all(PROFIL_ID, von, bis) as unknown as { daten: string }[];
     return zeilen.map((z) => JSON.parse(z.daten) as TagebuchEintrag);
   }
 

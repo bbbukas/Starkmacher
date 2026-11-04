@@ -56,6 +56,14 @@ export class TagebuchDienst {
     return { datum, eintraege: this.quelle().tagebuchTag(datum), woche: this.eintraegeDerWoche(datum) };
   }
 
+  /** Für den Rückblick: höchstens etwas mehr als ein Monat, mehr fragt die Oberfläche nie an. */
+  zeitraum(von: unknown, bis: unknown): TagebuchEintrag[] {
+    if (!datumErlaubt(von) || !datumErlaubt(bis) || von > bis) throw new StarkFehler('UNGUELTIG', 'Der Zeitraum stimmt nicht.');
+    const tage = (new Date(`${bis}T12:00:00`).getTime() - new Date(`${von}T12:00:00`).getTime()) / 86_400_000;
+    if (tage > 62) throw new StarkFehler('UNGUELTIG', 'Der Zeitraum ist zu lang.');
+    return this.quelle().tagebuchZeitraum(von, bis);
+  }
+
   private eintraegeDerWoche(datum: string): TagebuchEintrag[] {
     const quelle = this.quelle();
     return wochenTage(datum).flatMap((tag) => quelle.tagebuchTag(tag));

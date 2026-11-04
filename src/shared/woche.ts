@@ -169,7 +169,7 @@ function wochenWerte(bedarf: Bedarf, ausgeblendet: readonly string[]): WochenWer
 }
 
 /** Die DGE warnt vor „überscharfem“ Rechnen. Erst wer mehr als 10 % über dem Üblichen bräuchte, gilt als knapp. */
-const SPIELRAUM = 0.1;
+export const SPIELRAUM = 0.1;
 
 export interface KnapperWert {
   code: string;

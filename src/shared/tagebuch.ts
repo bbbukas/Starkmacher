@@ -399,11 +399,11 @@ const GEWICHT: Readonly<Record<string, number>> = {
 };
 
 /** Keine eigene Lücke: Die Kalorien stehen vorn für sich, Kohlenhydrate sind nur der Rest (Bauauftrag 4.2). */
-const NICHT_ALS_LUECKE = new Set(['ENERCC', 'CHO']);
+export const NICHT_ALS_LUECKE: ReadonlySet<string> = new Set(['ENERCC', 'CHO']);
 const KCAL_SPIELRAUM = 50;
 
 /** Im Satz klingt der kurze Name besser als die Fachbezeichnung aus der Liste. */
-const KURZNAMEN: Readonly<Record<string, string>> = { FIBT: 'Ballaststoffe', FAMS: 'einfach ungesättigte Fettsäuren', FAPU: 'mehrfach ungesättigte Fettsäuren', FAPUN3: 'Omega-3', 'F18:2CN6': 'Linolsäure', 'F18:3CN3': 'Alpha-Linolensäure' };
+export const KURZNAMEN: Readonly<Record<string, string>> = { FIBT: 'Ballaststoffe', FAMS: 'einfach ungesättigte Fettsäuren', FAPU: 'mehrfach ungesättigte Fettsäuren', FAPUN3: 'Omega-3', 'F18:2CN6': 'Linolsäure', 'F18:3CN3': 'Alpha-Linolensäure' };
 
 export function lueckeAus(code: string, n: Pick<Naehrstoff, 'name' | 'gruppe' | 'einheit' | 'zeigeInMg'>, s: SummenWert, ziel: { von: number; optimum?: { von: number } | undefined }): Luecke | null {
   const bezug = s.menge < ziel.von ? ziel.von : ziel.optimum?.von;

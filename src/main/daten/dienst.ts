@@ -9,7 +9,7 @@ import { existsSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Aenderung, LadeErgebnis } from '@shared/api';
 import { StarkFehler } from '@shared/fehler';
-import { gewichtPruefen, profilPruefen, type Stand } from '@shared/profil';
+import { datumErlaubt, datumVon, gewichtPruefen, profilPruefen, type Stand } from '@shared/profil';
 import type { Datenquelle } from './datenquelle';
 import { SqliteQuelle } from './sqlite';
 
@@ -78,9 +78,20 @@ export class DatenDienst {
 
   speichern(aenderung: Aenderung): Stand {
     const quelle = this.bereit();
+    const gewicht = aenderung.gewicht ? gewichtPruefen(aenderung.gewicht.datum, aenderung.gewicht.kg) : undefined;
+    // Ein Wert aus der Zukunft würde sofort als neuester für „Mein Bedarf“ gelten.
+    if (gewicht && gewicht.datum > datumVon(new Date())) throw new StarkFehler('UNGUELTIG', 'Ein Gewicht kann nicht in der Zukunft liegen.');
+    const weg = aenderung.gewichtWeg;
+    if (weg !== undefined) {
+      if (!datumErlaubt(weg)) throw new StarkFehler('UNGUELTIG', 'Das Datum stimmt nicht.');
+      // „Mein Bedarf“ rechnet mit dem neuesten Gewicht, ohne jedes Gewicht gäbe es keinen Bedarf mehr.
+      const bleiben = quelle.laden().gewichte.filter((g) => g.datum !== weg);
+      if (bleiben.length === 0 && !gewicht) throw new StarkFehler('UNGUELTIG', 'Das letzte Gewicht muss bleiben, „Mein Bedarf“ rechnet damit.');
+    }
     quelle.speichern({
       ...(aenderung.profil ? { profil: profilPruefen(aenderung.profil, this.jahr()) } : {}),
-      ...(aenderung.gewicht ? { gewicht: gewichtPruefen(aenderung.gewicht.datum, aenderung.gewicht.kg) } : {}),
+      ...(gewicht ? { gewicht } : {}),
+      ...(weg !== undefined ? { gewichtWeg: weg } : {}),
     });
     return quelle.laden();
   }

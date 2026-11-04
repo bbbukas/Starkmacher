@@ -37,6 +37,7 @@ const api: StarkmacherApi = {
   },
   tagebuch: {
     tag: (datum) => ipcRenderer.invoke('tagebuch:tag', datum),
+    zeitraum: (von, bis) => ipcRenderer.invoke('tagebuch:zeitraum', von, bis),
     eintragen: (eingabe) => ipcRenderer.invoke('tagebuch:eintragen', eingabe),
     tellerEintragen: (eingabe) => ipcRenderer.invoke('tagebuch:tellerEintragen', eingabe),
     aendern: (id, aenderung) => ipcRenderer.invoke('tagebuch:aendern', id, aenderung),

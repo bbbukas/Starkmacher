@@ -22,6 +22,9 @@ interface DatenWert {
   profilAendern(teil: Partial<Profil>): void;
   /** Trägt das Gewicht für heute ein. Der neueste Wert gilt für „Mein Bedarf“. */
   gewichtEintragen(kg: number): void;
+  /** Ein Gewicht mit Datum aus dem Verlauf. Wird sofort gespeichert, damit zwei Eingaben kurz nacheinander beide ankommen. */
+  gewichtMitDatum(kg: number, datum: string): void;
+  gewichtLoeschen(datum: string): void;
   speichernJetzt(): Promise<void>;
   /** Nach dem Wiederherstellen einer Sicherung. */
   ersetzen(stand: Stand): void;
@@ -58,14 +61,14 @@ export function DatenProvider({ children }: { children: ReactNode }) {
     if (uhr.current) clearTimeout(uhr.current);
     uhr.current = null;
     const aenderung = offen.current;
-    if (!aenderung.profil && !aenderung.gewicht) return reihe.current;
+    if (!aenderung.profil && !aenderung.gewicht && !aenderung.gewichtWeg) return reihe.current;
     offen.current = {};
     setSpeicherZustand('speichert');
     // Eine Änderung nach der anderen.
     reihe.current = reihe.current.then(async () => {
       const antwort = await api.daten.speichern(aenderung);
       if (antwort.ok) {
-        const nochOffen = Boolean(offen.current.profil || offen.current.gewicht);
+        const nochOffen = Boolean(offen.current.profil || offen.current.gewicht || offen.current.gewichtWeg);
         if (!nochOffen) setSpeicherZustand('gespeichert');
       } else {
         setSpeicherZustand('fehler');
@@ -107,6 +110,31 @@ export function DatenProvider({ children }: { children: ReactNode }) {
     [merken, setzen],
   );
 
+  const gewichtMitDatum = useCallback(
+    (kg: number, datum: string) => {
+      const alt = aktuell.current;
+      if (!alt) return;
+      void schreiben();
+      const gewicht = { datum, kg };
+      setzen({ ...alt, gewichte: [...alt.gewichte.filter((g) => g.datum !== datum), gewicht].sort((a, b) => a.datum.localeCompare(b.datum)) });
+      merken({ gewicht });
+      void schreiben();
+    },
+    [merken, setzen, schreiben],
+  );
+
+  const gewichtLoeschen = useCallback(
+    (datum: string) => {
+      const alt = aktuell.current;
+      if (!alt || alt.gewichte.length <= 1) return;
+      void schreiben();
+      setzen({ ...alt, gewichte: alt.gewichte.filter((g) => g.datum !== datum) });
+      merken({ gewichtWeg: datum });
+      void schreiben();
+    },
+    [merken, setzen, schreiben],
+  );
+
   const ersetzen = useCallback(
     (neu: Stand) => {
       if (uhr.current) clearTimeout(uhr.current);
@@ -129,7 +157,7 @@ export function DatenProvider({ children }: { children: ReactNode }) {
     // Beim Schließen des Fensters nichts verlieren.
     const schliessen = () => {
       const aenderung = offen.current;
-      if (aenderung.profil || aenderung.gewicht) api.daten.speichernSofort(aenderung);
+      if (aenderung.profil || aenderung.gewicht || aenderung.gewichtWeg) api.daten.speichernSofort(aenderung);
     };
     window.addEventListener('beforeunload', schliessen);
     return () => {
@@ -159,7 +187,7 @@ export function DatenProvider({ children }: { children: ReactNode }) {
   }, [bedarf, stand?.profil.einrichtungFertig, stand?.profil.letzteZiele, profilAendern, zeigen]);
 
   const wert = useMemo<DatenWert>(
-    () => ({ stand, laedt, ladeFehler, speicherZustand, bedarf, profilAendern, gewichtEintragen, speichernJetzt: schreiben, ersetzen }),
+    () => ({ stand, laedt, ladeFehler, speicherZustand, bedarf, profilAendern, gewichtEintragen, gewichtMitDatum, gewichtLoeschen, speichernJetzt: schreiben, ersetzen }),
     [stand, laedt, ladeFehler, speicherZustand, bedarf, profilAendern, gewichtEintragen, schreiben, ersetzen],
   );
 

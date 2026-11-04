@@ -61,6 +61,8 @@ export type LadeErgebnis = { ok: true; stand: Stand } | { ok: false; code: Fehle
 export interface Aenderung {
   profil?: Profil;
   gewicht?: Gewicht;
+  /** Das Datum eines Gewichts, das wegfallen soll. */
+  gewichtWeg?: string;
 }
 
 export interface SicherungsEintrag {
@@ -150,6 +152,8 @@ export interface StarkmacherApi {
   };
   tagebuch: {
     tag(datum: string): Promise<Antwort<TagAntwort>>;
+    /** Alle Einträge von bis, für den Rückblick. */
+    zeitraum(von: string, bis: string): Promise<Antwort<TagebuchEintrag[]>>;
     eintragen(eingabe: EintragEingabe): Promise<Antwort<TagebuchEintrag>>;
     /** Trägt ein, was gerade auf dem Teller liegt, gespeichert oder nicht. */
     tellerEintragen(eingabe: { datum: string; mahlzeit: Mahlzeit; menge: number; name: string; posten: TellerPosten[]; tellerId?: string }): Promise<Antwort<TagebuchEintrag>>;

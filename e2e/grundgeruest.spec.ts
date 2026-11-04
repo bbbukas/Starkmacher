@@ -66,7 +66,8 @@ test('Erster Start führt durch „Mein Bedarf“, danach gibt es die Reiter', a
     // Jeder Reiter hat seine Seite
     await seite.getByRole('link', { name: 'Verlauf' }).click();
     await expect(seite.getByRole('heading', { name: 'Verlauf' })).toBeVisible();
-    await expect(seite.getByText('Dieser Bereich kommt in Phase 7.')).toBeVisible();
+    await expect(seite.getByRole('region', { name: 'Gewicht' })).toBeVisible();
+    await expect(seite.getByRole('region', { name: 'Rückblick' })).toBeVisible();
 
     // Neustart: kein erster Start mehr, alles noch da, eine Sicherung ist entstanden
     await gespeichert(seite);

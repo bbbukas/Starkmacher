@@ -107,6 +107,7 @@ export function ipcEinrichten(dienst: DatenDienst, lebensmittel: LebensmittelDie
   );
 
   ipcMain.handle('tagebuch:tag', (_e, datum: unknown) => alsAntwort(() => tagebuch.tag(datum)));
+  ipcMain.handle('tagebuch:zeitraum', (_e, von: unknown, bis: unknown) => alsAntwort(() => tagebuch.zeitraum(von, bis)));
   ipcMain.handle('tagebuch:eintragen', (_e, eingabe: unknown) => alsAntwort(() => tagebuch.eintragen(eingabe)));
   ipcMain.handle('tagebuch:aendern', (_e, id: unknown, aenderung: unknown) => alsAntwort(() => tagebuch.aendern(id, aenderung)));
   ipcMain.handle('tagebuch:loeschen', (_e, id: unknown) =>

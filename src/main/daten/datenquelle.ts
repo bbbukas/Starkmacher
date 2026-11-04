@@ -26,6 +26,8 @@ export interface Datenquelle {
   zuletztVerwendet(anzahl: number): string[];
   /** Die Einträge eines Tages in der Reihenfolge, in der sie eingetragen wurden. */
   tagebuchTag(datum: string): TagebuchEintrag[];
+  /** Die Einträge von bis, beide Tage eingeschlossen. */
+  tagebuchZeitraum(von: string, bis: string): TagebuchEintrag[];
   tagebuchEintrag(id: string): TagebuchEintrag | null;
   tagebuchSpeichern(eintrag: TagebuchEintrag): void;
   tagebuchLoeschen(id: string): void;
@@ -49,7 +51,7 @@ export interface Datenquelle {
   migrieren(): void;
   laden(): Stand;
   /** Speichert alles auf einmal oder gar nichts. */
-  speichern(aenderung: { profil?: Profil; gewicht?: Gewicht }): void;
+  speichern(aenderung: { profil?: Profil; gewicht?: Gewicht; gewichtWeg?: string }): void;
   /** Schreibt eine vollständige, in sich stimmige Kopie, auch im laufenden Betrieb. */
   kopieSchreiben(zielDatei: string): void;
   schliessen(): void;
